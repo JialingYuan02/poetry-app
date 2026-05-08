@@ -1,0 +1,25 @@
+body {
+  font-family: "Noto Serif SC", serif;
+}
+
+.poem-content {
+  line-height: 2;
+  letter-spacing: 0.05em;
+}
+
+.poem-content p {
+  margin: 0;
+}
+
+/* Tab transition */
+.tab-section {
+  display: none;
+}
+.tab-section.active {
+  display: block;
+}
+
+/* Toast notification */
+#toast {
+  transition: opacity 0.3s ease;
+}

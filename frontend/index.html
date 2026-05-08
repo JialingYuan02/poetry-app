@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>拾句</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/static/css/custom.css">
+</head>
+<body class="bg-stone-50 text-stone-800 min-h-screen max-w-lg mx-auto flex flex-col">
+
+  <!-- Header -->
+  <header class="sticky top-0 bg-white/90 backdrop-blur border-b border-stone-100 z-40">
+    <h1 class="text-center py-3 text-lg font-semibold tracking-widest text-stone-700">拾 句</h1>
+  </header>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto pb-20 px-4 pt-4">
+
+    <!-- ── 诗词库 ── -->
+    <section id="section-library" class="tab-section">
+      <!-- Smart input -->
+      <div class="mb-4">
+        <input id="smart-input" type="text" placeholder="输入标题或任意残句，智能匹配…"
+          class="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        <div id="smart-results" class="mt-2 space-y-2"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-2 mb-3 flex-wrap">
+        <select id="filter-dynasty" class="text-sm border border-stone-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none">
+          <option value="">朝代</option>
+        </select>
+        <select id="filter-cipai" class="text-sm border border-stone-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none">
+          <option value="">词牌</option>
+        </select>
+        <label class="flex items-center gap-1.5 text-sm text-stone-500 cursor-pointer">
+          <input id="filter-memorized" type="checkbox" class="rounded accent-amber-500">
+          只看已背会
+        </label>
+      </div>
+
+      <!-- Poem list -->
+      <div id="poem-list" class="space-y-3">
+        <p class="text-center text-stone-400 py-12">加载中…</p>
+      </div>
+    </section>
+
+    <!-- ── 日记 ── -->
+    <section id="section-diary" class="tab-section">
+      <!-- Photo upload -->
+      <div id="upload-area" class="border-2 border-dashed border-stone-200 rounded-2xl p-5 text-center cursor-pointer hover:border-amber-300 hover:bg-amber-50 transition-colors mb-3">
+        <input id="photo-input" type="file" accept="image/*" class="hidden">
+        <img id="photo-preview" class="hidden max-h-44 mx-auto rounded-xl mb-2 object-cover">
+        <p id="upload-hint" class="text-stone-400 text-sm">点击上传今日照片</p>
+      </div>
+      <!-- Mood input + search -->
+      <div class="flex gap-2 mb-3">
+        <input id="mood-input" type="text" placeholder="此刻的意境…（如：秋风、落叶、思念）"
+          class="flex-1 border border-stone-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-300">
+        <button id="mood-search-btn" class="bg-amber-500 hover:bg-amber-600 text-white text-sm px-4 rounded-xl">配诗</button>
+      </div>
+      <div id="upload-result" class="space-y-2"></div>
+
+      <!-- Calendar -->
+      <div class="mt-6 bg-white rounded-2xl shadow-sm border border-stone-100 p-4">
+        <div class="flex items-center justify-between mb-4">
+          <button id="cal-prev" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-500">‹</button>
+          <span id="cal-label" class="font-medium text-stone-700"></span>
+          <button id="cal-next" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-500">›</button>
+        </div>
+        <!-- Weekday headers -->
+        <div class="grid grid-cols-7 mb-1">
+          <div class="text-center text-xs text-stone-400 py-1">日</div>
+          <div class="text-center text-xs text-stone-400 py-1">一</div>
+          <div class="text-center text-xs text-stone-400 py-1">二</div>
+          <div class="text-center text-xs text-stone-400 py-1">三</div>
+          <div class="text-center text-xs text-stone-400 py-1">四</div>
+          <div class="text-center text-xs text-stone-400 py-1">五</div>
+          <div class="text-center text-xs text-stone-400 py-1">六</div>
+        </div>
+        <div id="cal-grid" class="grid grid-cols-7 gap-y-1"></div>
+      </div>
+    </section>
+
+    <!-- ── 统计 ── -->
+    <section id="section-stats" class="tab-section">
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 text-center">
+          <p class="text-3xl font-semibold text-stone-800" id="stats-total">—</p>
+          <p class="text-sm text-stone-400 mt-1">已收录</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 text-center">
+          <p class="text-3xl font-semibold text-green-600" id="stats-memorized">—</p>
+          <p class="text-sm text-stone-400 mt-1">已背会</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-4">
+        <div class="flex justify-between text-sm mb-2">
+          <span class="text-stone-600">背诵进度</span>
+          <span class="text-stone-400" id="stats-pct">—</span>
+        </div>
+        <div class="h-2.5 bg-stone-100 rounded-full overflow-hidden">
+          <div id="stats-pct-bar" class="h-2.5 bg-green-400 rounded-full transition-all" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-100">
+        <p class="text-sm font-medium text-stone-700 mb-3">按朝代分布</p>
+        <div id="stats-dynasty" class="space-y-3"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom tab bar -->
+  <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-stone-100 z-40">
+    <div class="flex">
+      <button data-tab="library" class="flex-1 flex flex-col items-center py-3 text-stone-400 text-xs gap-0.5">
+        <span class="text-xl">📖</span>诗词库
+      </button>
+      <button data-tab="diary" class="flex-1 flex flex-col items-center py-3 text-stone-400 text-xs gap-0.5">
+        <span class="text-xl">📷</span>日记
+      </button>
+      <button data-tab="stats" class="flex-1 flex flex-col items-center py-3 text-stone-400 text-xs gap-0.5">
+        <span class="text-xl">📊</span>统计
+      </button>
+    </div>
+  </nav>
+
+  <!-- Entry detail modal -->
+  <div id="entry-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end">
+    <div class="bg-white w-full max-w-lg mx-auto rounded-t-2xl p-5 max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="modal-date" class="font-semibold text-stone-700"></h3>
+        <button id="modal-close" class="text-stone-400 hover:text-stone-600 text-xl">✕</button>
+      </div>
+      <p id="modal-scene" class="text-sm text-stone-500 bg-stone-50 rounded-lg p-3 mb-4"></p>
+      <div class="mb-4">
+        <p id="modal-poem-title" class="text-xs text-stone-400 mb-1"></p>
+        <p id="modal-poem-content" class="poem-content text-stone-700 whitespace-pre-line"></p>
+      </div>
+      <p id="modal-note" class="text-sm text-stone-500 italic"></p>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm text-white z-50 bg-stone-700" style="opacity:0"></div>
+
+  <script src="/static/static/js/app.js" type="module"></script>
+</body>
+</html>

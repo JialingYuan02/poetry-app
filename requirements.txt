@@ -1,4 +1,13 @@
-chromadb
-openai
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
 python-dotenv
+chromadb
+sentence-transformers
+openai
+google-genai
+pillow
+python-multipart
+zhconv
 rich
