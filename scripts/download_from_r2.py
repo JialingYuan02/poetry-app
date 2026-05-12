@@ -10,7 +10,7 @@ import boto3
 from botocore.client import Config
 
 BASE_DIR = Path(__file__).parent.parent
-BUCKET = os.environ["R2_BUCKET"]
+BUCKET = os.environ["R2_BUCKET"].strip()
 
 
 def make_client():
