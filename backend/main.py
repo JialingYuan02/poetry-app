@@ -2,7 +2,7 @@ import os
 import time
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -70,6 +70,16 @@ if os.path.isdir(frontend_dir):
 @app.get("/", include_in_schema=False)
 def root():
     return FileResponse(os.path.join(frontend_dir, "index.html"))
+
+
+@app.get("/photo/{path:path}", include_in_schema=False)
+def serve_photo(path: str):
+    from backend.services.storage import get_photo_bytes
+    from fastapi.responses import Response
+    data = get_photo_bytes(path)
+    if not data:
+        raise HTTPException(status_code=404, detail="图片不存在")
+    return Response(content=data, media_type="image/jpeg")
 
 
 @app.get("/health")

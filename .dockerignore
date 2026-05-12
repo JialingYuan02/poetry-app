@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+vectorstore/
+data/corpus/
+data/personal/
+.git/
+.DS_Store

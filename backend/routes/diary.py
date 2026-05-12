@@ -84,6 +84,7 @@ async def rematch_entry(
     from backend.routes.match import _save_photo, _run_search
     from backend.services.vision import VisionService
 
+    from backend.services.storage import get_photo_bytes
     if photo:
         image_bytes = await photo.read()
         if len(image_bytes) > 10 * 1024 * 1024:
@@ -92,12 +93,9 @@ async def rematch_entry(
         vision = VisionService()
         analysis = vision.analyze_for_poetry(image_bytes)
     else:
-        # 用原图重新分析
-        full_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", e.photo_path)
-        if not os.path.isfile(full_path):
+        image_bytes = get_photo_bytes(e.photo_path) if e.photo_path else None
+        if not image_bytes:
             raise HTTPException(status_code=400, detail="原图已不存在，请重新上传照片")
-        with open(full_path, "rb") as f:
-            image_bytes = f.read()
         new_photo_path = e.photo_path
         vision = VisionService()
         analysis = vision.analyze_for_poetry(image_bytes)
@@ -210,8 +208,7 @@ def delete_entry(entry_id: int, delete_photo: bool = True, db: Session = Depends
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
     if delete_photo and e.photo_path:
-        full_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", e.photo_path)
-        if os.path.isfile(full_path):
-            os.remove(full_path)
+        from backend.services.storage import delete_photo as storage_delete
+        storage_delete(e.photo_path)
     db.delete(e)
     db.commit()

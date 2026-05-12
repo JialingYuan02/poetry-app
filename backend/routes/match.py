@@ -16,8 +16,6 @@ from PIL import Image
 
 router = APIRouter(prefix="/match", tags=["match"])
 
-PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "personal", "photos")
-
 # 短诗（≤40字）流传度更高，给加成
 def _length_bonus(content: Optional[str]) -> float:
     if not content:
@@ -43,13 +41,14 @@ def _score_poem(base_similarity: float, poem_dict: dict) -> float:
 
 
 def _save_photo(image_bytes: bytes) -> str:
-    """保存图片到 data/personal/photos/，返回相对路径。"""
-    os.makedirs(PHOTOS_DIR, exist_ok=True)
+    """压缩图片并保存（本地或 R2），返回相对路径。"""
+    from backend.services.storage import save_photo
     filename = f"{date.today().isoformat()}_{uuid.uuid4().hex[:8]}.jpg"
-    save_path = os.path.join(PHOTOS_DIR, filename)
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    img.save(save_path, "JPEG", quality=85)
-    return f"personal/photos/{filename}"
+    relative_path = f"personal/photos/{filename}"
+    buf = io.BytesIO()
+    Image.open(io.BytesIO(image_bytes)).convert("RGB").save(buf, "JPEG", quality=85)
+    save_photo(buf.getvalue(), relative_path)
+    return relative_path
 
 
 def _run_search(search_text: str, db: Session) -> list:

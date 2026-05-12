@@ -11,3 +11,4 @@ pillow
 python-multipart
 zhconv
 rich
+boto3

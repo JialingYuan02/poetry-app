@@ -62,7 +62,7 @@ function clearBg() {
 }
 
 function setPhotoBg(photoPath, blurred = false) {
-  const url = photoPath.startsWith("blob:") ? photoPath : `/data/${photoPath}`;
+  const url = photoPath.startsWith("blob:") ? photoPath : `/photo/${photoPath}`;
   bgImage.style.backgroundImage = `url(${url})`;
   bgImage.classList.add("visible");
   bgImage.classList.toggle("blurred", blurred);
@@ -303,10 +303,10 @@ function renderCalendar() {
     if (entries) {
       const photos = entries.filter(e => e.photo_path).slice(0, 3);
       if (photos.length === 1) {
-        thumbHtml = `<img class="cal-thumb-single" src="/data/${photos[0].photo_path}" loading="lazy">`;
+        thumbHtml = `<img class="cal-thumb-single" src="/photo/${photos[0].photo_path}" loading="lazy">`;
       } else if (photos.length > 1) {
         thumbHtml = `<div class="cal-thumbs">${
-          photos.map(e => `<img class="cal-thumb" src="/data/${e.photo_path}" loading="lazy">`).join("")
+          photos.map(e => `<img class="cal-thumb" src="/photo/${e.photo_path}" loading="lazy">`).join("")
         }</div>`;
       }
     }
@@ -387,7 +387,7 @@ function renderDayPanel(dateStr) {
     html += `
       <div class="panel-entry" data-entry-id="${entry.id}">
         ${entry.photo_path
-          ? `<img class="panel-photo" src="/data/${entry.photo_path}" alt="">`
+          ? `<img class="panel-photo" src="/photo/${entry.photo_path}" alt="">`
           : ""}
         ${poem ? `
           <div class="panel-poem">
@@ -429,7 +429,7 @@ function renderDayPanel(dateStr) {
   });
 
   calPanelInner.querySelectorAll(".panel-photo").forEach(img => {
-    img.addEventListener("click", () => setPhotoBg(img.src.replace("/data/", ""), false));
+    img.addEventListener("click", () => setPhotoBg(img.src.replace("/photo/", ""), false));
   });
 }
 
@@ -503,7 +503,7 @@ document.getElementById("cal-poems-btn").addEventListener("click", async () => {
       return `
         <div class="poems-entry">
           ${entry.photo_path
-            ? `<img class="poems-thumb" src="/data/${entry.photo_path}" loading="lazy">`
+            ? `<img class="poems-thumb" src="/photo/${entry.photo_path}" loading="lazy">`
             : `<div class="poems-thumb-placeholder"></div>`}
           <div class="poems-info">
             <div class="poems-date-label">${dateLabel}</div>
