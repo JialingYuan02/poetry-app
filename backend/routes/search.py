@@ -30,20 +30,65 @@ def _fame_bonus(author: Optional[str]) -> float:
     return 1.0
 
 
+def _title_penalty(title: Optional[str]) -> float:
+    """Penalize obscure occasional poems with very long titles.
+    Titles listing multiple recipients (e.g. '呈葛鲁卿席大光周举同舍诸兄') are private
+    correspondence and almost never the 'right' poem for a scene."""
+    if not title:
+        return 1.0
+    n = len(title)
+    if n <= 8:
+        return 1.0
+    if n <= 14:
+        return 0.95
+    if n <= 20:
+        return 0.82
+    return 0.65  # 20+ chars: highly obscure occasional poem
+
+
+def _content_fp(poem: dict) -> str:
+    """First 40 chars of content (stripped) — stable fingerprint across metadata variants."""
+    return (poem.get("content") or "").replace(" ", "").replace("\n", "")[:40]
+
+
+def _merge(a: dict, b: dict) -> dict:
+    """Keep the longer content and the higher score from two candidate dicts."""
+    best_score = max(a["score"], b["score"])
+    winner = a if len(a.get("content") or "") >= len(b.get("content") or "") else b
+    return {**winner, "score": best_score}
+
+
 def _dedup_candidates(candidates: list) -> list:
-    """Dedup poems: same (author, title) → same poem; no-title → dedup by content."""
-    seen: dict = {}
+    """Two-pass dedup:
+    1) By (author, title) — catches same poem with same metadata.
+    2) By content fingerprint — catches same poem with different titles/punctuation.
+    """
+    # Pass 1: meta key
+    seen_meta: dict = {}
     for c in candidates:
         author = c.get("author") or ""
         title = c.get("title") or ""
         if title:
             key = (author, title)
         else:
-            raw = (c.get("content") or "").replace(" ", "").replace("\n", "")[:30]
+            raw = _content_fp(c)
             key = (author, c.get("ci_pai") or "", raw)
-        if key not in seen or c["score"] > seen[key]["score"]:
-            seen[key] = c
-    result = list(seen.values())
+
+        if key not in seen_meta:
+            seen_meta[key] = c
+        else:
+            seen_meta[key] = _merge(seen_meta[key], c)
+
+    # Pass 2: content fingerprint — catches same poem with title punctuation differences
+    seen_content: dict = {}
+    for c in seen_meta.values():
+        fp = _content_fp(c)
+        if fp not in seen_content:
+            seen_content[fp] = c
+        else:
+            seen_content[fp] = _merge(seen_content[fp], c)
+
+    result = list(seen_content.values())
     result.sort(key=lambda x: x["score"], reverse=True)
     return result
 
@@ -91,14 +136,14 @@ def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
         if p.id not in seen_ids:
             seen_ids.add(p.id)
             d = poem_to_dict(p)
-            d["score"] = round(1.0 * _fame_bonus(p.author), 4)
+            d["score"] = round(1.0 * _fame_bonus(p.author) * _title_penalty(p.title), 4)
             candidates.append(d)
 
     for p in db.query(Poem).filter(Poem.ci_pai.contains(query)).limit(10).all():
         if p.id not in seen_ids:
             seen_ids.add(p.id)
             d = poem_to_dict(p)
-            d["score"] = round(0.99 * _fame_bonus(p.author), 4)
+            d["score"] = round(0.99 * _fame_bonus(p.author) * _title_penalty(p.title), 4)
             candidates.append(d)
 
     from backend.services.embedder import EmbedderService
@@ -111,7 +156,7 @@ def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
                 if p:
                     base = round(1 - hit["distance"], 4)
                     d = poem_to_dict(p)
-                    d["score"] = round(base * _fame_bonus(p.author), 4)
+                    d["score"] = round(base * _fame_bonus(p.author) * _title_penalty(p.title), 4)
                     candidates.append(d)
                     seen_ids.add(p.id)
     elif not candidates:

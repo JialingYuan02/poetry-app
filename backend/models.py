@@ -24,6 +24,8 @@ class DiaryEntry(Base):
     date = Column(Date, nullable=False, index=True)
     photo_path = Column(String, nullable=True)
     scene_description = Column(Text, nullable=True)
+    gemini_analysis = Column(Text, nullable=True)  # JSON string
+    user_text = Column(String, nullable=True)
     poem_id = Column(Integer, ForeignKey("poems.id"), nullable=True)
     note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

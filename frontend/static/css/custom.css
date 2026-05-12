@@ -1,25 +1,807 @@
+/* ──────────────────────────────────────────────
+   拾句  —  沉浸式配诗日历
+   字体：Ma Shan Zheng（楷体风格 Web Font）
+────────────────────────────────────────────── */
+
+:root {
+  --gold:         #c9a96e;
+  --gold-light:   #e2c49a;
+  --glass-bg:     rgba(12, 20, 12, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --text-hi:      rgba(255, 255, 255, 0.95);
+  --text-mid:     rgba(255, 255, 255, 0.62);
+  --text-dim:     rgba(255, 255, 255, 0.36);
+  --blur:         18px;
+  --radius:       16px;
+  --danger:       #c0534a;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; overflow: hidden; }
+
 body {
-  font-family: "Noto Serif SC", serif;
+  font-family: 'Ma Shan Zheng', 'KaiTi', 'STKaiti', '楷体', serif;
+  color: var(--text-hi);
+  background:
+    radial-gradient(ellipse at 20% 65%, #254530 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 25%, #1e3445 0%, transparent 55%),
+    #182218;
 }
 
-.poem-content {
-  line-height: 2;
-  letter-spacing: 0.05em;
+/* ── Background photo ───────────────────────── */
+#bg-image {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.04);
+  opacity: 0;
+  filter: brightness(0.88) saturate(0.88);
+  transition: opacity 0.9s ease, filter 1.1s ease;
+  z-index: 0;
+}
+#bg-image.visible { opacity: 1; }
+#bg-image.blurred { filter: blur(10px) brightness(0.50) saturate(0.7); }
+
+#bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0.30) 0%,
+    rgba(0,0,0,0.04) 45%,
+    rgba(0,0,0,0.34) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#bg-overlay.dim { opacity: 0.25; }
+
+/* ── App shell ──────────────────────────────── */
+#app {
+  position: relative;
+  z-index: 10;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
 }
 
-.poem-content p {
-  margin: 0;
-}
-
-/* Tab transition */
-.tab-section {
+/* ── Phase transitions ──────────────────────── */
+.phase {
   display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  gap: 12px;
+  animation: fadeUp 0.38s ease;
 }
-.tab-section.active {
-  display: block;
+.phase.active { display: flex; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Toast notification */
-#toast {
-  transition: opacity 0.3s ease;
+/* ── Glass ──────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
 }
+
+/* ─────────────────────────────────────────────
+   PHASE 1: Landing
+───────────────────────────────────────────── */
+.landing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+/*
+  letter-spacing 会在最后一字后面也加一个间距，导致 text-align:center 时
+  整体偏左 letter-spacing/2。补偿方式：padding-left = letter-spacing，
+  同时 align-self:stretch 让元素宽度与字幕共享同一基准，确保轴线一致。
+*/
+.landing-title {
+  font-size: 80px;
+  letter-spacing: 0.22em;
+  padding-left: 0.22em;
+  align-self: stretch;
+  text-align: center;
+  font-weight: normal;
+  line-height: 1.1;
+  text-shadow: 0 2px 28px rgba(0,0,0,0.65);
+}
+.landing-sub {
+  font-size: 20px;
+  color: var(--text-mid);
+  letter-spacing: 0.10em;
+  padding-left: 0.10em;
+  align-self: stretch;
+  text-align: center;
+}
+.landing-quote {
+  font-size: 17px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  padding-left: 0.06em;
+  align-self: stretch;
+  text-align: center;
+}
+.btn-outline-round {
+  font-family: inherit;
+  font-size: 18px;
+  letter-spacing: 0.22em;
+  padding-right: 0.22em;
+  color: var(--text-hi);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.32);
+  border-radius: 50px;
+  padding: 13px 44px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: border-color 0.25s, color 0.25s;
+}
+.btn-outline-round:hover { border-color: rgba(255,255,255,0.58); color: #fff; }
+
+.btn-text-link {
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.2s;
+  margin-top: -8px;
+}
+.btn-text-link:hover { color: var(--text-mid); }
+
+/* ─────────────────────────────────────────────
+   PHASE 2: Upload
+───────────────────────────────────────────── */
+.phase-topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+.phase-topbar .btn-text-link {
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  margin-top: 0;
+}
+
+.app-title {
+  font-size: 28px;
+  letter-spacing: 0.20em;
+  padding-left: 0.20em;
+  font-weight: normal;
+  text-shadow: 0 1px 16px rgba(0,0,0,0.7);
+  margin-bottom: 4px;
+}
+
+#upload-zone {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  transition: border-color 0.3s;
+}
+#upload-zone:hover { border-color: rgba(255,255,255,0.22); }
+#upload-zone input { display: none; }
+
+#upload-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-mid);
+}
+#upload-zone img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.upload-icon  { width: 44px; height: 44px; opacity: 0.55; }
+.upload-hint  { font-size: 15px; letter-spacing: 0.12em; }
+
+.input-wrap { width: 100%; padding: 2px 18px; }
+.input-wrap input[type="text"] {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-hi);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  padding: 13px 0;
+}
+.input-wrap input[type="text"]::placeholder { color: var(--text-dim); }
+
+/* Date picker row */
+.date-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+}
+.date-label {
+  font-size: 14px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+input[type="date"] {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-mid);
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  padding: 4px 0;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-primary {
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: 0.35em;
+  color: #06100a;
+  background: var(--gold);
+  border: none;
+  border-radius: 50px;
+  padding: 13px 0;
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.25s, opacity 0.25s;
+}
+.btn-primary:hover:not(:disabled) { background: var(--gold-light); }
+.btn-primary:disabled              { opacity: 0.38; cursor: default; }
+
+.btn-ghost {
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--text-mid);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 9px 26px;
+  cursor: pointer;
+  transition: color 0.25s, border-color 0.25s;
+}
+.btn-ghost:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.28); }
+
+/* ─────────────────────────────────────────────
+   PHASE 3: Loading
+───────────────────────────────────────────── */
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.loading-ring {
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1.1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-size: 17px;
+  letter-spacing: 0.22em;
+  color: var(--text-mid);
+  animation: textFade 2.4s ease infinite;
+}
+@keyframes textFade {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1.0; }
+}
+
+/* ─────────────────────────────────────────────
+   PHASE 4: Result
+───────────────────────────────────────────── */
+#analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-self: stretch;
+  justify-content: flex-start;
+  padding: 0 22px;
+}
+.tag {
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(201, 169, 110, 0.18);
+  border: 1px solid rgba(201, 169, 110, 0.42);
+  color: var(--gold-light);
+  letter-spacing: 0.08em;
+}
+#card-counter {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.25em;
+  align-self: stretch;
+  text-align: left;
+  padding: 0 22px;
+}
+#cards-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#cards-viewport { flex: 1; min-width: 0; }
+
+.poem-card {
+  padding: 24px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeUp 0.4s ease;
+}
+.poem-meta    { font-size: 13px; color: var(--text-dim); letter-spacing: 0.18em; }
+.poem-title   { font-size: 27px; color: var(--gold); letter-spacing: 0.28em; font-weight: normal; line-height: 1.35; }
+.poem-divider { width: 28px; height: 1px; background: rgba(255,255,255,0.18); }
+.poem-body    { font-size: 17px; line-height: 2.1; color: var(--text-hi); letter-spacing: 0.06em; }
+.poem-body p  { margin: 0; }
+
+.nav-btn {
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: var(--text-mid);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.25s, border-color 0.25s;
+}
+.nav-btn:hover:not(:disabled) { color: var(--text-hi); border-color: rgba(255,255,255,0.28); }
+.nav-btn:disabled { opacity: 0.18; cursor: default; }
+
+#card-dots { display: flex; gap: 8px; align-items: center; }
+.dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.3s, transform 0.3s;
+}
+.dot.active { background: var(--gold); transform: scale(1.35); }
+
+/* ─────────────────────────────────────────────
+   PHASE 5: Calendar — split panel
+───────────────────────────────────────────── */
+#phase-calendar {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Left: calendar grid */
+#cal-left {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px 16px;
+  overflow-y: auto;
+  transition: flex-basis 0.32s ease;
+  min-width: 0;
+}
+#phase-calendar.has-panel #cal-left {
+  flex-basis: 42%;
+}
+
+/* Right: day detail panel */
+#cal-panel {
+  flex: 0 0 0%;
+  overflow: hidden;
+  border-left: 1px solid rgba(255,255,255,0.07);
+  transition: flex-basis 0.32s ease;
+  display: flex;
+  flex-direction: column;
+}
+#phase-calendar.has-panel #cal-panel {
+  flex-basis: 58%;
+  overflow-y: auto;
+}
+
+#cal-panel-inner {
+  padding: 20px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+}
+
+/* Calendar header */
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 18px;
+}
+.cal-month-title {
+  font-size: 22px;
+  letter-spacing: 0.35em;
+  color: var(--text-hi);
+  flex: 1;
+  text-align: center;
+}
+.cal-nav {
+  background: none;
+  border: none;
+  color: var(--text-mid);
+  font-size: 26px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.cal-nav:hover { color: var(--text-hi); }
+
+.cal-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.cal-icon-btn {
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  color: var(--text-mid);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+.cal-icon-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+
+#cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 1px 5px;
+  border-radius: 7px;
+  cursor: default;
+  transition: background 0.2s;
+  min-height: 52px;
+  gap: 3px;
+  position: relative;
+}
+.cal-day.empty { pointer-events: none; }
+.cal-day.has-entry { cursor: pointer; }
+.cal-day.has-entry:hover,
+.cal-day.selected { background: rgba(255,255,255,0.06); }
+
+.cal-num {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-mid);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+.cal-day.today .cal-num { color: var(--gold); }
+.cal-day.has-entry .cal-num {
+  background: rgba(201, 169, 110, 0.22);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+
+/* Fan thumbnails for multi-entry days */
+.cal-thumbs {
+  position: relative;
+  width: 36px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.cal-thumbs .cal-thumb {
+  position: absolute;
+  width: 28px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.35);
+  top: 0;
+}
+.cal-thumbs .cal-thumb:nth-child(1) {
+  transform-origin: bottom center;
+  transform: rotate(-10deg);
+  left: 0;
+  z-index: 1;
+}
+.cal-thumbs .cal-thumb:nth-child(2) {
+  transform: rotate(0deg);
+  left: 4px;
+  z-index: 3;
+}
+.cal-thumbs .cal-thumb:nth-child(3) {
+  transform-origin: bottom center;
+  transform: rotate(10deg);
+  left: 8px;
+  z-index: 2;
+}
+
+/* Single thumbnail (no fan) */
+.cal-thumb-single {
+  width: 36px;
+  height: 26px;
+  object-fit: cover;
+  border-radius: 3px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+/* ── Day panel content ──────────────────────── */
+.panel-date {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.22em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-add-btn {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.panel-add-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+.panel-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.panel-entry:last-child { border-bottom: none; }
+
+.panel-photo {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+  max-height: 180px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.panel-photo:hover { opacity: 0.88; }
+
+.panel-poem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+.panel-poem .poem-title { font-size: 20px; letter-spacing: 0.22em; }
+.panel-poem .poem-body  { font-size: 14px; line-height: 1.95; }
+.panel-poem .poem-meta  { font-size: 12px; }
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.panel-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.2s;
+}
+.panel-close:hover { color: var(--text-hi); }
+
+/* On narrow screens the panel overlays */
+@media (max-width: 560px) {
+  #phase-calendar.has-panel #cal-left { flex-basis: 0%; overflow: hidden; }
+  #phase-calendar.has-panel #cal-panel { flex-basis: 100%; }
+}
+
+/* ─────────────────────────────────────────────
+   PHASE 6: Monthly poems
+───────────────────────────────────────────── */
+#phase-poems {
+  max-width: 500px;
+  height: 100%;
+  justify-content: flex-start;
+  padding-top: 0;
+  gap: 0;
+}
+
+.poems-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 16px;
+  flex-shrink: 0;
+}
+.poems-header .cal-month-title {
+  font-size: 18px;
+  flex: 1;
+  text-align: left;
+  letter-spacing: 0.25em;
+}
+
+#poems-list {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+
+.poems-entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.poems-thumb {
+  width: 56px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.poems-thumb-placeholder {
+  width: 56px;
+  height: 44px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.poems-info {
+  flex: 1;
+  min-width: 0;
+}
+.poems-date-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.18em;
+  margin-bottom: 3px;
+}
+.poems-poem-title {
+  font-size: 18px;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poems-poem-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  margin-top: 2px;
+}
+.poems-poem-snippet {
+  font-size: 13px;
+  color: var(--text-mid);
+  letter-spacing: 0.05em;
+  line-height: 1.7;
+  margin-top: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ── Shared small buttons ───────────────────── */
+.btn-ghost-sm {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-mid);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 5px 16px;
+  cursor: pointer;
+  transition: color 0.25s, border-color 0.25s;
+}
+.btn-ghost-sm:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.28); }
+.btn-ghost-sm.danger { color: rgba(220,100,90,0.70); border-color: rgba(200,80,70,0.25); }
+.btn-ghost-sm.danger:hover { color: rgba(230,120,110,0.95); border-color: rgba(200,80,70,0.50); }
+
+.detail-back-btn {
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--text-mid);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.detail-back-btn:hover { color: var(--text-hi); }
