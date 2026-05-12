@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 确保运行时目录存在
+RUN mkdir -p /app/data/personal/photos
+
 # 复制代码
 COPY backend/ backend/
 COPY frontend/ frontend/

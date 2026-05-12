@@ -7,6 +7,12 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/personal/poetry.db")
 
+if DATABASE_URL.startswith("sqlite"):
+    _db_file = DATABASE_URL.replace("sqlite:///", "").replace("sqlite://", "")
+    _db_dir = os.path.dirname(_db_file)
+    if _db_dir:
+        os.makedirs(_db_dir, exist_ok=True)
+
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
