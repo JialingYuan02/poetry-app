@@ -18,10 +18,13 @@ RUN mkdir -p /app/data/personal/photos
 COPY backend/ backend/
 COPY frontend/ frontend/
 COPY data/ingest_corpus.py data/
+COPY scripts/ scripts/
+COPY startup.sh startup.sh
+RUN chmod +x startup.sh
 
 # 预下载 BGE 模型（构建时缓存，避免启动时等待）
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-zh-v1.5')"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "startup.sh"]
