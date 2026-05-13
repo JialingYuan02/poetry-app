@@ -10,4 +10,4 @@ else
     echo "未检测到 R2 配置，跳过数据下载（本地开发模式）。"
 fi
 
-exec uvicorn backend.main:app --host 0.0.0.0 --port 8000
+exec uvicorn backend.main:app --host 0.0.0.0 --port "${PORT:-8000}"
