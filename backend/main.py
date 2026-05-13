@@ -16,13 +16,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("预热 BGE 向量模型…")
-    try:
-        from backend.services.embedder import EmbedderService
-        EmbedderService()
-        logger.info("模型就绪")
-    except Exception as e:
-        logger.warning(f"模型预热失败（不影响启动）: {e}")
     yield
 
 

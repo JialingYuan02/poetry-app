@@ -25,6 +25,6 @@ RUN chmod +x startup.sh
 # 预下载 BGE 模型（构建时缓存，避免启动时等待）
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-zh-v1.5')"
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["bash", "startup.sh"]
