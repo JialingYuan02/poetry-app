@@ -23,9 +23,9 @@ def _r2():
         from botocore.client import Config
         _r2_client = boto3.client(
             "s3",
-            endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID'].strip()}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"].strip(),
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"].strip(),
             config=Config(signature_version="s3v4"),
             region_name="auto",
         )
@@ -33,7 +33,7 @@ def _r2():
 
 
 def _bucket() -> str:
-    return os.environ.get("R2_BUCKET", "poetry-app-photos")
+    return os.environ.get("R2_BUCKET", "poetry-app-photos").strip()
 
 
 def save_photo(jpeg_bytes: bytes, relative_path: str) -> str:
