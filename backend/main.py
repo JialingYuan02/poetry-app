@@ -1,6 +1,8 @@
 import os
 import time
+import asyncio
 import logging
+import subprocess
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,8 +16,27 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
+async def _download_data():
+    if not (os.environ.get("R2_ACCOUNT_ID") and os.environ.get("R2_ACCESS_KEY_ID")):
+        return
+    logger.info("后台开始从 R2 下载数据…")
+    proc = await asyncio.create_subprocess_exec(
+        "python", "scripts/download_from_r2.py",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    out, _ = await proc.communicate()
+    if out:
+        logger.info(out.decode(errors="replace"))
+    if proc.returncode != 0:
+        logger.error("R2 数据下载失败，returncode=%d", proc.returncode)
+    else:
+        logger.info("R2 数据下载完成")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    asyncio.create_task(_download_data())
     yield
 
 
