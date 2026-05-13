@@ -124,8 +124,10 @@ matchBtn.addEventListener("click", async () => {
   try {
     const resp = await fetch("/match/photo", { method: "POST", body: formData });
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.detail || "配诗失败，请重试");
+      const body = await resp.text().catch(() => "");
+      let detail = "";
+      try { detail = JSON.parse(body).detail; } catch {}
+      throw new Error(detail || `配诗失败 [${resp.status}]：${body.slice(0, 120)}`);
     }
     const data = await resp.json();
     state.matchResult = data;
