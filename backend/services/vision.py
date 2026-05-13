@@ -46,7 +46,7 @@ class VisionService:
             jpeg_bytes = buf.getvalue()
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-lite",
+                model="gemini-2.0-flash",
                 contents=[
                     types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
                     POETRY_PROMPT,
