@@ -95,10 +95,11 @@ async def match_photo(
     vision = VisionService()
     analysis = vision.analyze_for_poetry(image_bytes)
 
-    if analysis.get("error"):
+    gemini_error = analysis.get("error")
+    if gemini_error and not user_text.strip():
         raise HTTPException(status_code=503, detail=analysis["error"])
 
-    search_text = vision.build_search_text(analysis, user_text)
+    search_text = vision.build_search_text(analysis, user_text) if not gemini_error else user_text.strip()
     top3 = _run_search(search_text, db)
 
     db.add(UserLog(action="match_photo", query=search_text))
@@ -115,6 +116,7 @@ async def match_photo(
         },
         "user_text": user_text,
         "poems": top3,
+        "warning": gemini_error or None,
     }
 
 

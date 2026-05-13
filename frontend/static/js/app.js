@@ -130,7 +130,7 @@ matchBtn.addEventListener("click", async () => {
     const data = await resp.json();
     state.matchResult = data;
     state.currentPoemIdx = 0;
-    renderResult(data.analysis);
+    renderResult(data.analysis, data.warning);
     bgImage.classList.remove("blurred");
     showPhase("phase-result");
   } catch (err) {
@@ -147,13 +147,14 @@ document.getElementById("to-calendar-btn").addEventListener("click", async () =>
 });
 
 // ── Result ────────────────────────────────────────────────────────────────────
-function renderResult(analysis) {
+function renderResult(analysis, warning) {
   const tags = [];
   if (analysis.mood)    tags.push(...analysis.mood.split("、").slice(0, 2));
   if (analysis.imagery) tags.push(...analysis.imagery.split(/[、，,]/).slice(0, 3));
   if (analysis.style)   tags.push(analysis.style);
-  analysisTags.innerHTML = tags.filter(Boolean)
-    .map(t => `<span class="tag">${t}</span>`).join("");
+  const tagsHtml = tags.filter(Boolean).map(t => `<span class="tag">${t}</span>`).join("");
+  const warnHtml = warning ? `<p class="vision-warning">图片分析受限，已按您的文字配诗</p>` : "";
+  analysisTags.innerHTML = warnHtml + tagsHtml;
 
   state.currentPoemIdx = 0;
   renderCard();

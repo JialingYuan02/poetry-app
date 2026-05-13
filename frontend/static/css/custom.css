@@ -805,3 +805,10 @@ input[type="date"] {
   flex-shrink: 0;
 }
 .detail-back-btn:hover { color: var(--text-hi); }
+
+.vision-warning {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
