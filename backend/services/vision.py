@@ -51,6 +51,9 @@ class VisionService:
                     types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
                     POETRY_PROMPT,
                 ],
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                ),
             )
             return _parse_poetry_analysis(response.text.strip())
         except Exception as e:
