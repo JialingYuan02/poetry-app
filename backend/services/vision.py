@@ -46,7 +46,7 @@ class VisionService:
             jpeg_bytes = buf.getvalue()
 
             response = self.client.models.generate_content(
-                model="gemini-flash-lite-latest",
+                model="gemini-2.0-flash-lite",
                 contents=[
                     types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
                     POETRY_PROMPT,
@@ -56,8 +56,10 @@ class VisionService:
         except Exception as e:
             err = str(e).lower()
             if "quota" in err or "rate" in err or "429" in err:
-                return {"error": "API 配额限制，请稍后重试", "search_text": ""}
-            raise
+                return {"error": "Gemini API 配额限制，请稍后重试"}
+            if "not found" in err or "404" in err or "invalid" in err:
+                return {"error": f"Gemini 模型错误：{e}"}
+            return {"error": f"图片分析失败：{e}"}
 
     def build_search_text(self, analysis: dict, user_text: str = "") -> str:
         """合并 Gemini 分析 + 用户文字为检索字符串，用户文字权重翻倍。"""
