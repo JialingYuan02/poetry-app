@@ -84,6 +84,11 @@ def serve_photo(path: str):
 
 @app.get("/health")
 def health():
+    return {"status": "ok"}
+
+
+@app.get("/health/full")
+def health_full():
     try:
         from backend.services.embedder import EmbedderService
         info = EmbedderService().health_check()
