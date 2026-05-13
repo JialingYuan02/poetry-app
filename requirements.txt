@@ -6,7 +6,7 @@ python-dotenv
 chromadb
 sentence-transformers
 openai
-google-genai
+google-genai>=1.47.0
 pillow
 python-multipart
 zhconv
