@@ -45,13 +45,26 @@ def download_one(client, key: str, local_path: Path):
     return key
 
 
+def _db_populated(db_path: Path) -> bool:
+    """SQLAlchemy 启动时会创建空 poetry.db，需检查是否真有数据。"""
+    if not db_path.exists() or db_path.stat().st_size < 1024:
+        return False
+    import sqlite3
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            count = conn.execute("SELECT COUNT(*) FROM poem").fetchone()[0]
+            return count > 0
+    except Exception:
+        return False
+
+
 def main():
     client = make_client()
 
     # --- poetry.db ---
     db_path = BASE_DIR / "data" / "personal" / "poetry.db"
-    if db_path.exists():
-        print("poetry.db 已存在，跳过下载。")
+    if _db_populated(db_path):
+        print("poetry.db 已存在且有数据，跳过下载。")
     else:
         print("下载 poetry.db ...")
         db_path.parent.mkdir(parents=True, exist_ok=True)
