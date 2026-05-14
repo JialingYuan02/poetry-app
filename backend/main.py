@@ -31,7 +31,9 @@ async def _download_data():
     if proc.returncode != 0:
         logger.error("R2 数据下载失败，returncode=%d", proc.returncode)
     else:
-        logger.info("R2 数据下载完成")
+        logger.info("R2 数据下载完成，重置数据库连接池")
+        from backend.db import engine
+        engine.dispose()
 
 
 @asynccontextmanager
