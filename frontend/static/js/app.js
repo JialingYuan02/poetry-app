@@ -164,6 +164,14 @@ function renderResult(analysis, warning) {
 
 function renderCard() {
   const poems = state.matchResult.poems;
+  if (!poems || poems.length === 0) {
+    cardsViewport.innerHTML = `<div class="poem-card"><p style="color:var(--text-dim);padding:40px 20px;text-align:center">暂未找到匹配的诗词<br>请补充描述文字后重试</p></div>`;
+    cardCounter.textContent = "";
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    cardDots.innerHTML = "";
+    return;
+  }
   const p = poems[state.currentPoemIdx];
   const title = p.title || p.ci_pai || "（无题）";
   const meta  = [p.dynasty, p.author].filter(Boolean).join(" · ");
