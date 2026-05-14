@@ -92,7 +92,30 @@ def _dedup_candidates(candidates: list) -> list:
 
     result = list(seen_content.values())
     result.sort(key=lambda x: x["score"], reverse=True)
-    return result
+
+    # Pass 3: same title → keep highest score only
+    # Handles disputed-authorship variants where content differs slightly
+    # (e.g. "白居易" vs "唐白居易" with different punctuation versions)
+    seen_title: dict = {}
+    for c in result:
+        title = (c.get("title") or "").strip()
+        if not title:
+            continue
+        if title not in seen_title or c["score"] > seen_title[title]["score"]:
+            seen_title[title] = c
+
+    final: list = []
+    added_titles: set = set()
+    for c in result:
+        title = (c.get("title") or "").strip()
+        if title:
+            if title not in added_titles:
+                final.append(seen_title[title])
+                added_titles.add(title)
+        else:
+            final.append(c)
+
+    return final
 
 
 class SmartInputBody(BaseModel):
