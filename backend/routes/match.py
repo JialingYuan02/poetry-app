@@ -33,9 +33,19 @@ def _score_poem(base_similarity: float, poem_dict: dict) -> float:
     length = _length_bonus(content)
     title_pen = _title_penalty(title)
 
-    # 无名氏过滤：相似度不够高时不纳入
-    if (not author or author == "无名氏") and base_similarity < 0.18:
-        return 0.0
+    # 按名气分层设相似度下限，名气越低门槛越高
+    if not author or author == "无名氏":
+        if base_similarity < 0.30:
+            return 0.0
+    elif fame >= 1.20:       # 顶级名家：李白/杜甫/苏轼等，放宽门槛
+        if base_similarity < 0.10:
+            return 0.0
+    elif fame >= 1.08:       # 次级名家：杜牧/孟浩然等
+        if base_similarity < 0.18:
+            return 0.0
+    else:                    # 普通作者
+        if base_similarity < 0.25:
+            return 0.0
 
     return round(base_similarity * fame * length * title_pen, 4)
 
@@ -58,7 +68,7 @@ def _run_search(search_text: str, db: Session) -> list:
     if embedder.corpus.count() == 0:
         raise HTTPException(status_code=503, detail="语料库尚未初始化")
 
-    hits = embedder.search_corpus(search_text, n_results=20)
+    hits = embedder.search_corpus(search_text, n_results=60)
     candidates = []
     seen_ids: set = set()
     for hit in hits:
