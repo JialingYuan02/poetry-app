@@ -46,9 +46,11 @@ def _title_penalty(title: Optional[str]) -> float:
     return 0.65  # 20+ chars: highly obscure occasional poem
 
 
+_PUNCT = str.maketrans("", "", "，。！？、；：""''「」【】《》〈〉·—…,.!?;: \n\t")
+
 def _content_fp(poem: dict) -> str:
-    """First 40 chars of content (stripped) — stable fingerprint across metadata variants."""
-    return (poem.get("content") or "").replace(" ", "").replace("\n", "")[:40]
+    """First 40 chars stripped of whitespace and punctuation — handles version variants."""
+    return (poem.get("content") or "").translate(_PUNCT)[:40]
 
 
 def _merge(a: dict, b: dict) -> dict:
@@ -60,19 +62,19 @@ def _merge(a: dict, b: dict) -> dict:
 
 def _dedup_candidates(candidates: list) -> list:
     """Two-pass dedup:
-    1) By (author, title) — catches same poem with same metadata.
-    2) By content fingerprint — catches same poem with different titles/punctuation.
+    1) By (title, content_fp) — catches same poem attributed to different authors.
+    2) By content fingerprint alone — catches same poem with different titles/punctuation.
     """
-    # Pass 1: meta key
+    # Pass 1: title + content fingerprint, author intentionally excluded
+    # so disputed-authorship duplicates (same poem, different author) are merged
     seen_meta: dict = {}
     for c in candidates:
-        author = c.get("author") or ""
         title = c.get("title") or ""
+        fp = _content_fp(c)
         if title:
-            key = (author, title)
+            key = (title, fp)
         else:
-            raw = _content_fp(c)
-            key = (author, c.get("ci_pai") or "", raw)
+            key = (c.get("ci_pai") or "", fp)
 
         if key not in seen_meta:
             seen_meta[key] = c
