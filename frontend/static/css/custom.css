@@ -833,6 +833,7 @@ input[type="date"] {
 }
 
 .auth-form input[type="text"],
+.auth-form input[type="email"],
 .auth-form input[type="password"] {
   width: 100%;
   background: transparent;
@@ -845,6 +846,14 @@ input[type="date"] {
   padding: 14px 0;
 }
 .auth-form input::placeholder { color: var(--text-dim); }
+
+.auth-hint {
+  font-size: 13px;
+  color: var(--text-mid);
+  letter-spacing: 0.04em;
+  padding: 10px 0 4px;
+  line-height: 1.5;
+}
 
 .auth-divider {
   width: 100%;

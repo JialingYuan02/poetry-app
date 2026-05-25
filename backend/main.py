@@ -26,6 +26,15 @@ def _apply_migrations():
                 rows = conn.execute(sqlalchemy.text(f"PRAGMA table_info({table})")).fetchall()
                 return any(r[1] == col for r in rows)
 
+            # users table: email column (new in email-based auth)
+            if not has_column("users", "email"):
+                conn.execute(sqlalchemy.text(
+                    "ALTER TABLE users ADD COLUMN email TEXT"
+                ))
+                conn.execute(sqlalchemy.text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users(email)"
+                ))
+
             for table in ("poems", "diary_entries", "user_logs"):
                 if not has_column(table, "user_id"):
                     conn.execute(sqlalchemy.text(

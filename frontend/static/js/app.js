@@ -1,7 +1,6 @@
 // ── Auth state ────────────────────────────────────────────────────────────────
 let authToken    = localStorage.getItem("shiju_token");
 let authUsername = localStorage.getItem("shiju_username");
-let authIsLogin  = true; // toggle between login / register
 
 function authHeaders() {
   return authToken ? { "Authorization": `Bearer ${authToken}` } : {};
@@ -107,79 +106,178 @@ function setPhotoBg(photoPath, blurred = false) {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-const authUsernameEl  = document.getElementById("auth-username");
-const authPasswordEl  = document.getElementById("auth-password");
-const authErrorEl     = document.getElementById("auth-error");
-const authSubmitBtn   = document.getElementById("auth-submit-btn");
-const authToggleBtn   = document.getElementById("auth-toggle-btn");
+const authToggleBtn = document.getElementById("auth-toggle-btn");
 
-function setAuthMode(isLogin) {
-  authIsLogin = isLogin;
-  authSubmitBtn.textContent = isLogin ? "登录" : "注册";
-  authToggleBtn.textContent = isLogin ? "还没有账号？注册" : "已有账号？登录";
-  authErrorEl.textContent = "";
+let regEmail = "";
+let regOtp   = "";
+
+function showAuthStep(step) {
+  // step: "login" | "reg-email" | "reg-otp" | "reg-profile"
+  document.getElementById("auth-step-login").style.display   = step === "login"       ? "" : "none";
+  document.getElementById("auth-step-email").style.display   = step === "reg-email"   ? "" : "none";
+  document.getElementById("auth-step-otp").style.display     = step === "reg-otp"     ? "" : "none";
+  document.getElementById("auth-step-profile").style.display = step === "reg-profile" ? "" : "none";
+  authToggleBtn.textContent = step === "login" ? "还没有账号？注册" : "已有账号？登录";
 }
 
-authToggleBtn.addEventListener("click", () => setAuthMode(!authIsLogin));
+function _saveAuth(token, username) {
+  authToken    = token;
+  authUsername = username;
+  localStorage.setItem("shiju_token", token);
+  localStorage.setItem("shiju_username", username);
+  document.getElementById("landing-username").textContent = username;
+}
 
-authSubmitBtn.addEventListener("click", async () => {
-  const username = authUsernameEl.value.trim();
-  const password = authPasswordEl.value;
-  authErrorEl.textContent = "";
+authToggleBtn.addEventListener("click", () => {
+  const isLogin = document.getElementById("auth-step-login").style.display !== "none";
+  showAuthStep(isLogin ? "reg-email" : "login");
+});
 
-  if (!username || !password) {
-    authErrorEl.textContent = "请填写用户名和密码";
-    return;
-  }
+// Step A: Login
+const loginBtn = document.getElementById("auth-login-btn");
+loginBtn.addEventListener("click", async () => {
+  const email    = document.getElementById("auth-email-login").value.trim();
+  const password = document.getElementById("auth-password-login").value;
+  const errEl    = document.getElementById("auth-error-login");
+  errEl.textContent = "";
 
-  authSubmitBtn.disabled = true;
-  authSubmitBtn.textContent = authIsLogin ? "登录中…" : "注册中…";
+  if (!email || !password) { errEl.textContent = "请填写邮箱和密码"; return; }
 
+  loginBtn.disabled = true;
+  loginBtn.textContent = "登录中…";
   try {
-    const endpoint = authIsLogin ? "/auth/login" : "/auth/register";
-    const resp = await fetch(endpoint, {
+    const resp = await fetch("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     const data = await resp.json();
-    if (!resp.ok) {
-      authErrorEl.textContent = data.detail || (authIsLogin ? "登录失败" : "注册失败");
-      return;
-    }
-    authToken    = data.token;
-    authUsername = data.username;
-    localStorage.setItem("shiju_token", authToken);
-    localStorage.setItem("shiju_username", authUsername);
-
-    document.getElementById("landing-username").textContent = authUsername;
-    if (!authIsLogin) {
-      state._pendingOnboarding = true;
-    }
+    if (!resp.ok) { errEl.textContent = data.detail || "登录失败"; return; }
+    _saveAuth(data.token, data.username);
     showPhase("phase-landing");
   } catch {
-    authErrorEl.textContent = "网络错误，请重试";
+    errEl.textContent = "网络错误，请重试";
   } finally {
-    authSubmitBtn.disabled = false;
-    setAuthMode(authIsLogin);
+    loginBtn.disabled = false;
+    loginBtn.textContent = "登录";
   }
 });
-
-// Allow submitting with Enter key
-authPasswordEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") authSubmitBtn.click();
+document.getElementById("auth-email-login").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("auth-password-login").focus();
 });
-authUsernameEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") authPasswordEl.focus();
+document.getElementById("auth-password-login").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loginBtn.click();
+});
+
+// Step B: Send OTP
+const sendOtpBtn = document.getElementById("auth-send-otp-btn");
+sendOtpBtn.addEventListener("click", async () => {
+  const email = document.getElementById("auth-email-reg").value.trim();
+  const errEl = document.getElementById("auth-error-email");
+  errEl.textContent = "";
+
+  if (!email) { errEl.textContent = "请输入邮箱"; return; }
+
+  sendOtpBtn.disabled = true;
+  sendOtpBtn.textContent = "发送中…";
+  try {
+    const resp = await fetch("/auth/request-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.detail || "发送失败"; return; }
+    regEmail = email;
+    document.getElementById("auth-otp-hint").textContent = `验证码已发送至 ${email}`;
+    document.getElementById("auth-error-otp").textContent = "";
+    document.getElementById("auth-otp-input").value = "";
+    showAuthStep("reg-otp");
+    document.getElementById("auth-otp-input").focus();
+  } catch {
+    errEl.textContent = "网络错误，请重试";
+  } finally {
+    sendOtpBtn.disabled = false;
+    sendOtpBtn.textContent = "发送验证码";
+  }
+});
+document.getElementById("auth-email-reg").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendOtpBtn.click();
+});
+
+// Step C: Verify OTP → move to profile
+const verifyOtpBtn = document.getElementById("auth-verify-otp-btn");
+verifyOtpBtn.addEventListener("click", () => {
+  const otp   = document.getElementById("auth-otp-input").value.trim();
+  const errEl = document.getElementById("auth-error-otp");
+  errEl.textContent = "";
+
+  if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+    errEl.textContent = "请输入 6 位数字验证码";
+    return;
+  }
+  regOtp = otp;
+  document.getElementById("auth-nickname").value = "";
+  document.getElementById("auth-password-reg").value = "";
+  document.getElementById("auth-error-profile").textContent = "";
+  showAuthStep("reg-profile");
+  document.getElementById("auth-nickname").focus();
+});
+document.getElementById("auth-otp-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") verifyOtpBtn.click();
+});
+
+// Step D: Complete registration
+const registerBtn = document.getElementById("auth-register-btn");
+registerBtn.addEventListener("click", async () => {
+  const username = document.getElementById("auth-nickname").value.trim();
+  const password = document.getElementById("auth-password-reg").value;
+  const errEl    = document.getElementById("auth-error-profile");
+  errEl.textContent = "";
+
+  if (!username) { errEl.textContent = "请输入昵称"; return; }
+  if (password.length < 6) { errEl.textContent = "密码至少 6 位"; return; }
+
+  registerBtn.disabled = true;
+  registerBtn.textContent = "注册中…";
+  try {
+    const resp = await fetch("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: regEmail, otp: regOtp, username, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.detail || "注册失败"; return; }
+
+    // Auto-login: pre-fill and visually submit login form
+    state._pendingOnboarding = true;
+    const emailLoginEl = document.getElementById("auth-email-login");
+    const pwLoginEl    = document.getElementById("auth-password-login");
+    emailLoginEl.value = regEmail;
+    pwLoginEl.value    = password;
+    showAuthStep("login");
+    setTimeout(() => loginBtn.click(), 500);
+  } catch {
+    errEl.textContent = "网络错误，请重试";
+  } finally {
+    registerBtn.disabled = false;
+    registerBtn.textContent = "完成注册";
+  }
+});
+document.getElementById("auth-nickname").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("auth-password-reg").focus();
+});
+document.getElementById("auth-password-reg").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") registerBtn.click();
 });
 
 // ── Landing ───────────────────────────────────────────────────────────────────
 document.getElementById("landing-logout-btn").addEventListener("click", () => {
   _logout();
-  authUsernameEl.value = "";
-  authPasswordEl.value = "";
-  authErrorEl.textContent = "";
-  setAuthMode(true);
+  document.getElementById("auth-email-login").value = "";
+  document.getElementById("auth-password-login").value = "";
+  document.getElementById("auth-error-login").textContent = "";
+  showAuthStep("login");
   clearBg();
   showPhase("phase-auth");
 });
