@@ -10,10 +10,30 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import backend.models  # noqa: F401 — triggers create_all on startup
-from backend.routes import poems, search, diary, match
+from backend.routes import poems, search, diary, match, auth
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _apply_migrations():
+    """Add new columns/tables to existing DB without breaking old data."""
+    import sqlalchemy
+    from backend.db import engine
+    try:
+        with engine.connect() as conn:
+            def has_column(table, col):
+                rows = conn.execute(sqlalchemy.text(f"PRAGMA table_info({table})")).fetchall()
+                return any(r[1] == col for r in rows)
+
+            for table in ("poems", "diary_entries", "user_logs"):
+                if not has_column(table, "user_id"):
+                    conn.execute(sqlalchemy.text(
+                        f"ALTER TABLE {table} ADD COLUMN user_id INTEGER REFERENCES users(id)"
+                    ))
+            conn.commit()
+    except Exception:
+        logger.exception("Migration failed (non-fatal)")
 
 
 async def _download_data():
@@ -34,10 +54,12 @@ async def _download_data():
         logger.info("R2 数据下载完成，重置数据库连接池")
         from backend.db import engine
         engine.dispose()
+        _apply_migrations()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _apply_migrations()
     asyncio.create_task(_download_data())
     yield
 
@@ -67,6 +89,7 @@ async def global_exception_handler(request: Request, _exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "服务器内部错误，请稍后重试"})
 
 
+app.include_router(auth.router)
 app.include_router(poems.router)
 app.include_router(search.router)
 app.include_router(diary.router)

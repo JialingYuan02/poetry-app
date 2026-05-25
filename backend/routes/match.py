@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from backend.db import get_db
 from backend.models import Poem, UserLog
+from backend.routes.auth import get_optional_user_id
 from backend.routes.poems import poem_to_dict
 from backend.routes.search import FAMOUS_POETS, _fame_bonus, _title_penalty, _dedup_candidates
 
@@ -93,6 +94,7 @@ async def match_photo(
     photo: UploadFile = File(...),
     user_text: str = Form(default=""),
     db: Session = Depends(get_db),
+    user_id: Optional[int] = Depends(get_optional_user_id),
 ):
     """上传照片 + 可选文字 → 保存图片 → 推荐 2-3 首诗词。"""
     image_bytes = await photo.read()
@@ -112,7 +114,7 @@ async def match_photo(
     search_text = vision.build_search_text(analysis, user_text) if not gemini_error else user_text.strip()
     top3 = _run_search(search_text, db)
 
-    db.add(UserLog(action="match_photo", query=search_text))
+    db.add(UserLog(action="match_photo", query=search_text, user_id=user_id))
     db.commit()
 
     return {
@@ -134,6 +136,7 @@ async def match_photo(
 async def match_text(
     user_text: str = Form(...),
     db: Session = Depends(get_db),
+    user_id: Optional[int] = Depends(get_optional_user_id),
 ):
     """只输入文字（不上传照片）→ 推荐 2-3 首诗词。"""
     if not user_text.strip():
@@ -166,7 +169,7 @@ async def match_text(
     deduped = _dedup_candidates(candidates)
     top3 = deduped[:3]
 
-    db.add(UserLog(action="match_text", query=user_text.strip()))
+    db.add(UserLog(action="match_text", query=user_text.strip(), user_id=user_id))
     db.commit()
 
     return {"user_text": user_text, "poems": top3}

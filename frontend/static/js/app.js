@@ -1,3 +1,30 @@
+// ── Auth state ────────────────────────────────────────────────────────────────
+let authToken    = localStorage.getItem("shiju_token");
+let authUsername = localStorage.getItem("shiju_username");
+let authIsLogin  = true; // toggle between login / register
+
+function authHeaders() {
+  return authToken ? { "Authorization": `Bearer ${authToken}` } : {};
+}
+
+async function apiFetch(url, options = {}) {
+  options.headers = { ...authHeaders(), ...(options.headers || {}) };
+  const resp = await fetch(url, options);
+  if (resp.status === 401) {
+    _logout();
+    showPhase("phase-auth");
+    throw new Error("登录已过期，请重新登录");
+  }
+  return resp;
+}
+
+function _logout() {
+  authToken = null;
+  authUsername = null;
+  localStorage.removeItem("shiju_token");
+  localStorage.removeItem("shiju_username");
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   selectedFile: null,
@@ -7,10 +34,11 @@ const state = {
   uploadDate: todayISO(),
   calYear: new Date().getFullYear(),
   calMonth: new Date().getMonth() + 1,
-  calEntries: [],       // [{date, entries:[{entry_id,photo_path,poem_title}]}]
-  selectedDay: null,    // date string "YYYY-MM-DD"
-  dayEntries: [],       // full entry objects for selected day
+  calEntries: [],
+  selectedDay: null,
+  dayEntries: [],
   dayEntryIdx: 0,
+  _pendingOnboarding: false,
 };
 
 const CN_MONTHS = [
@@ -48,12 +76,17 @@ const poemsList      = document.getElementById("poems-list");
 const poemsTitle     = document.getElementById("poems-title");
 
 // ── Phase management ──────────────────────────────────────────────────────────
-const NO_PHOTO_PHASES = new Set(["phase-landing", "phase-upload", "phase-calendar", "phase-poems"]);
+const NO_PHOTO_PHASES = new Set(["phase-auth", "phase-landing", "phase-upload", "phase-calendar", "phase-poems"]);
 
 function showPhase(id) {
   document.querySelectorAll(".phase").forEach(el => el.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   bgOverlay.classList.toggle("dim", NO_PHOTO_PHASES.has(id));
+
+  if (id === "phase-upload" && state._pendingOnboarding) {
+    state._pendingOnboarding = false;
+    setTimeout(startOnboarding, 320);
+  }
 }
 
 function clearBg() {
@@ -68,7 +101,84 @@ function setPhotoBg(photoPath, blurred = false) {
   bgImage.classList.toggle("blurred", blurred);
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const authUsernameEl  = document.getElementById("auth-username");
+const authPasswordEl  = document.getElementById("auth-password");
+const authErrorEl     = document.getElementById("auth-error");
+const authSubmitBtn   = document.getElementById("auth-submit-btn");
+const authToggleBtn   = document.getElementById("auth-toggle-btn");
+
+function setAuthMode(isLogin) {
+  authIsLogin = isLogin;
+  authSubmitBtn.textContent = isLogin ? "登录" : "注册";
+  authToggleBtn.textContent = isLogin ? "还没有账号？注册" : "已有账号？登录";
+  authErrorEl.textContent = "";
+}
+
+authToggleBtn.addEventListener("click", () => setAuthMode(!authIsLogin));
+
+authSubmitBtn.addEventListener("click", async () => {
+  const username = authUsernameEl.value.trim();
+  const password = authPasswordEl.value;
+  authErrorEl.textContent = "";
+
+  if (!username || !password) {
+    authErrorEl.textContent = "请填写用户名和密码";
+    return;
+  }
+
+  authSubmitBtn.disabled = true;
+  authSubmitBtn.textContent = authIsLogin ? "登录中…" : "注册中…";
+
+  try {
+    const endpoint = authIsLogin ? "/auth/login" : "/auth/register";
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      authErrorEl.textContent = data.detail || (authIsLogin ? "登录失败" : "注册失败");
+      return;
+    }
+    authToken    = data.token;
+    authUsername = data.username;
+    localStorage.setItem("shiju_token", authToken);
+    localStorage.setItem("shiju_username", authUsername);
+
+    document.getElementById("landing-username").textContent = authUsername;
+    if (!authIsLogin) {
+      state._pendingOnboarding = true;
+    }
+    showPhase("phase-landing");
+  } catch {
+    authErrorEl.textContent = "网络错误，请重试";
+  } finally {
+    authSubmitBtn.disabled = false;
+    setAuthMode(authIsLogin);
+  }
+});
+
+// Allow submitting with Enter key
+authPasswordEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") authSubmitBtn.click();
+});
+authUsernameEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") authPasswordEl.focus();
+});
+
 // ── Landing ───────────────────────────────────────────────────────────────────
+document.getElementById("landing-logout-btn").addEventListener("click", () => {
+  _logout();
+  authUsernameEl.value = "";
+  authPasswordEl.value = "";
+  authErrorEl.textContent = "";
+  setAuthMode(true);
+  clearBg();
+  showPhase("phase-auth");
+});
+
 document.getElementById("enter-btn").addEventListener("click", () => {
   state.uploadDate = todayISO();
   dateInput.value = state.uploadDate;
@@ -122,7 +232,7 @@ matchBtn.addEventListener("click", async () => {
   if (mood) formData.append("user_text", mood);
 
   try {
-    const resp = await fetch("/match/photo", { method: "POST", body: formData });
+    const resp = await apiFetch("/match/photo", { method: "POST", body: formData });
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
       let detail = "";
@@ -216,10 +326,10 @@ confirmBtn.addEventListener("click", async () => {
         gemini_analysis: JSON.stringify(state.matchResult.analysis),
         user_text: state.matchResult.user_text || "",
       });
-      const resp = await fetch(`/diary/entries/${state.editEntryId}?${params}`, { method: "PATCH" });
+      const resp = await apiFetch(`/diary/entries/${state.editEntryId}?${params}`, { method: "PATCH" });
       if (!resp.ok) throw new Error("更新失败");
     } else {
-      const resp = await fetch("/diary/save", {
+      const resp = await apiFetch("/diary/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -274,8 +384,8 @@ function resetUpload() {
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
 async function loadCalendar() {
-  const resp = await fetch(`/diary/calendar?year=${state.calYear}&month=${state.calMonth}`);
-  state.calEntries = await resp.json(); // [{date, entries:[...]}]
+  const resp = await apiFetch(`/diary/calendar?year=${state.calYear}&month=${state.calMonth}`);
+  state.calEntries = await resp.json();
   closePanel();
   renderCalendar();
 }
@@ -290,13 +400,14 @@ function renderCalendar() {
   const dayMap = {};
   state.calEntries.forEach(d => {
     const day = parseInt(d.date.split("-")[2], 10);
-    dayMap[day] = d.entries; // [{entry_id, photo_path, poem_title}]
+    dayMap[day] = d.entries;
   });
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) {
     cells.push('<div class="cal-day empty"></div>');
   }
+
   for (let d = 1; d <= daysInMonth; d++) {
     const entries = dayMap[d];
     const isToday = (today.getFullYear() === state.calYear &&
@@ -358,11 +469,10 @@ document.getElementById("cal-add").addEventListener("click", () => {
 // ── Day panel ──────────────────────────────────────────────────────────────────
 async function openDayPanel(dateStr) {
   state.selectedDay = dateStr;
-  renderCalendar(); // re-render to mark selected day
+  renderCalendar();
 
-  // Fetch full entries for this day
   const [year, month] = dateStr.split("-");
-  const resp = await fetch(`/diary/entries?year=${year}&month=${month}`);
+  const resp = await apiFetch(`/diary/entries?year=${year}&month=${month}`);
   const all = await resp.json();
   state.dayEntries = all.filter(e => e.date === dateStr);
 
@@ -393,7 +503,6 @@ function renderDayPanel(dateStr) {
     const title = poem ? (poem.title || poem.ci_pai || "（无题）") : "";
     const meta  = poem ? [poem.dynasty, poem.author].filter(Boolean).join(" · ") : "";
     const lines = poem ? poem.content.split("\n").map(l => l.trim()).filter(Boolean) : [];
-    const snippet = lines.slice(0, 2).join(" / ");
 
     html += `
       <div class="panel-entry" data-entry-id="${entry.id}">
@@ -418,12 +527,10 @@ function renderDayPanel(dateStr) {
 
   calPanelInner.innerHTML = html;
 
-  // Set background to first photo
   const firstPhoto = entries.find(e => e.photo_path);
   if (firstPhoto) setPhotoBg(firstPhoto.photo_path, false);
   else clearBg();
 
-  // Add event listeners
   calPanelInner.querySelector(".panel-add-btn")?.addEventListener("click", (e) => {
     state.editEntryId = null;
     state.uploadDate = e.currentTarget.dataset.date;
@@ -445,14 +552,12 @@ function renderDayPanel(dateStr) {
 }
 
 async function deleteEntry(entryId, dateStr) {
-  const entry = state.dayEntries.find(e => e.id === entryId);
   if (!confirm(`删除 ${dateStr} 的这条记录？`)) return;
 
-  const resp = await fetch(`/diary/entries/${entryId}?delete_photo=true`, { method: "DELETE" });
+  const resp = await apiFetch(`/diary/entries/${entryId}?delete_photo=true`, { method: "DELETE" });
   if (!resp.ok && resp.status !== 204) { alert("删除失败"); return; }
 
   await loadCalendar();
-  // Re-open panel if day still has entries, else close
   const dayData = state.calEntries.find(d => d.date === dateStr);
   if (dayData && dayData.entries.length > 0) {
     await openDayPanel(dateStr);
@@ -468,7 +573,7 @@ async function rematchEntry(entryId) {
   try {
     const formData = new FormData();
     formData.append("user_text", entry.user_text || "");
-    const resp = await fetch(`/diary/entries/${entryId}/rematch`, {
+    const resp = await apiFetch(`/diary/entries/${entryId}/rematch`, {
       method: "POST", body: formData,
     });
     if (!resp.ok) {
@@ -497,7 +602,7 @@ async function rematchEntry(entryId) {
 document.getElementById("cal-poems-btn").addEventListener("click", async () => {
   poemsTitle.textContent = CN_MONTHS[state.calMonth - 1];
 
-  const resp = await fetch(`/diary/entries?year=${state.calYear}&month=${state.calMonth}`);
+  const resp = await apiFetch(`/diary/entries?year=${state.calYear}&month=${state.calMonth}`);
   const entries = (await resp.json()).sort((a, b) => a.date.localeCompare(b.date));
 
   if (!entries.length) {
@@ -535,5 +640,79 @@ document.getElementById("poems-back").addEventListener("click", () => {
   showPhase("phase-calendar");
 });
 
+// ── Onboarding ────────────────────────────────────────────────────────────────
+const ONBOARDING_STEPS = [
+  {
+    selector: "#upload-zone",
+    tip: "点这里拍摄，或从相册选择一张照片",
+  },
+  {
+    selector: "#mood-input",
+    tip: "输入此刻的心情或场景描述，帮助配出更贴切的诗句（可选）",
+  },
+  {
+    selector: "#match-btn",
+    tip: "点击「配诗」，AI 将在38万首古诗词中为你寻觅最合适的几句",
+  },
+];
+
+let onboardingStep = 0;
+const onboardingOverlay  = document.getElementById("onboarding-overlay");
+const onboardingSpotlight = document.getElementById("onboarding-spotlight");
+const onboardingTooltip  = document.getElementById("onboarding-tooltip");
+const onboardingTip      = document.getElementById("onboarding-tip");
+const onboardingNext     = document.getElementById("onboarding-next");
+const onboardingSkip     = document.getElementById("onboarding-skip");
+
+function startOnboarding() {
+  onboardingStep = 0;
+  onboardingOverlay.classList.add("active");
+  showOnboardingStep();
+}
+
+function showOnboardingStep() {
+  const step = ONBOARDING_STEPS[onboardingStep];
+  const target = document.querySelector(step.selector);
+  if (!target) { finishOnboarding(); return; }
+
+  const rect = target.getBoundingClientRect();
+  const pad = 10;
+
+  onboardingSpotlight.style.left   = `${rect.left - pad}px`;
+  onboardingSpotlight.style.top    = `${rect.top - pad}px`;
+  onboardingSpotlight.style.width  = `${rect.width + pad * 2}px`;
+  onboardingSpotlight.style.height = `${rect.height + pad * 2}px`;
+
+  onboardingTip.textContent = step.tip;
+  onboardingNext.textContent =
+    onboardingStep === ONBOARDING_STEPS.length - 1 ? "开始使用" : "下一步 →";
+
+  // Position tooltip below spotlight, clamped to viewport
+  const tooltipTop = rect.bottom + pad + 16;
+  const maxTop = window.innerHeight - 180;
+  onboardingTooltip.style.top = `${Math.min(tooltipTop, maxTop)}px`;
+}
+
+function finishOnboarding() {
+  onboardingOverlay.classList.remove("active");
+  localStorage.setItem("shiju_onboarded", "1");
+}
+
+onboardingNext.addEventListener("click", () => {
+  onboardingStep++;
+  if (onboardingStep >= ONBOARDING_STEPS.length) {
+    finishOnboarding();
+  } else {
+    showOnboardingStep();
+  }
+});
+
+onboardingSkip.addEventListener("click", finishOnboarding);
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-showPhase("phase-landing");
+if (authToken) {
+  document.getElementById("landing-username").textContent = authUsername || "";
+  showPhase("phase-landing");
+} else {
+  showPhase("phase-auth");
+}

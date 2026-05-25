@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.db import get_db
 from backend.models import Poem, UserLog
+from backend.routes.auth import get_current_user_id, get_optional_user_id
 from backend.routes.poems import poem_to_dict
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -127,7 +128,11 @@ class ConfirmBody(BaseModel):
 
 
 @router.post("/smart-input")
-def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
+def smart_input(
+    body: SmartInputBody,
+    db: Session = Depends(get_db),
+    user_id: Optional[int] = Depends(get_optional_user_id),
+):
     query = body.query.strip()
 
     # 1. 词牌名精确匹配 → 按名气排序返回（词牌名是一对多）
@@ -138,7 +143,7 @@ def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
             d = poem_to_dict(p)
             d["score"] = round(_fame_bonus(p.author), 4)
             all_c.append(d)
-        db.add(UserLog(action="search", query=query))
+        db.add(UserLog(action="search", query=query, user_id=user_id))
         db.commit()
         return {"query": query, "candidates": _dedup_candidates(all_c)[:8]}
 
@@ -149,7 +154,7 @@ def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
         best = title_exact[0]
         d = poem_to_dict(best)
         d["score"] = 1.0
-        db.add(UserLog(action="search", query=query))
+        db.add(UserLog(action="search", query=query, user_id=user_id))
         db.commit()
         return {"query": query, "candidates": [d]}
 
@@ -190,20 +195,24 @@ def smart_input(body: SmartInputBody, db: Session = Depends(get_db)):
             detail="语料库尚未初始化，请先运行 python data/ingest_corpus.py",
         )
 
-    db.add(UserLog(action="search", query=query))
+    db.add(UserLog(action="search", query=query, user_id=user_id))
     db.commit()
 
     return {"query": query, "candidates": _dedup_candidates(candidates)[:8]}
 
 
 @router.post("/confirm")
-def confirm_poem(body: ConfirmBody, db: Session = Depends(get_db)):
+def confirm_poem(
+    body: ConfirmBody,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     poem = db.query(Poem).filter(Poem.id == body.poem_id).first()
     if not poem:
         raise HTTPException(status_code=404, detail="诗词不存在")
 
-    if poem.source == "personal":
-        db.add(UserLog(action="confirm", query=None, result_poem_id=poem.id))
+    if poem.source == "personal" and poem.user_id == user_id:
+        db.add(UserLog(action="confirm", query=None, result_poem_id=poem.id, user_id=user_id))
         db.commit()
         return poem_to_dict(poem)
 
@@ -214,6 +223,7 @@ def confirm_poem(body: ConfirmBody, db: Session = Depends(get_db)):
         ci_pai=poem.ci_pai,
         content=poem.content,
         source="personal",
+        user_id=user_id,
     )
     db.add(personal)
     db.commit()
@@ -226,9 +236,10 @@ def confirm_poem(body: ConfirmBody, db: Session = Depends(get_db)):
         "dynasty": personal.dynasty or "",
         "ci_pai": personal.ci_pai or "",
         "title": personal.title or "",
+        "user_id": str(user_id),
     })
 
-    db.add(UserLog(action="confirm", query=None, result_poem_id=personal.id))
+    db.add(UserLog(action="confirm", query=None, result_poem_id=personal.id, user_id=user_id))
     db.commit()
 
     return poem_to_dict(personal)

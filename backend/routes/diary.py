@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend.db import get_db
 from backend.models import DiaryEntry, Poem, UserLog
+from backend.routes.auth import get_current_user_id
 from backend.routes.poems import poem_to_dict
 
 router = APIRouter(prefix="/diary", tags=["diary"])
@@ -42,7 +43,11 @@ class SaveMatchBody(BaseModel):
 
 
 @router.post("/save", status_code=201)
-def save_match(body: SaveMatchBody, db: Session = Depends(get_db)):
+def save_match(
+    body: SaveMatchBody,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     """将配诗结果存入日记（选定后调用）。"""
     poem = db.query(Poem).filter(Poem.id == body.poem_id).first()
     if not poem:
@@ -60,10 +65,10 @@ def save_match(body: SaveMatchBody, db: Session = Depends(get_db)):
         gemini_analysis=json.dumps(body.analysis, ensure_ascii=False) if body.analysis else None,
         user_text=body.user_text,
         poem_id=body.poem_id,
-        note=body.note,
+        user_id=user_id,
     )
     db.add(entry)
-    db.add(UserLog(action="save_match", result_poem_id=body.poem_id))
+    db.add(UserLog(action="save_match", result_poem_id=body.poem_id, user_id=user_id))
     db.commit()
     db.refresh(entry)
     return entry_to_dict(entry, poem)
@@ -75,9 +80,10 @@ async def rematch_entry(
     photo: Optional[UploadFile] = File(default=None),
     user_text: str = Form(default=""),
     db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
     """重新配诗：可选替换照片，返回新的 3 首候选（不立刻覆盖，由前端选定后再调 /diary/save 或 PATCH）。"""
-    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id).first()
+    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id, DiaryEntry.user_id == user_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
 
@@ -125,9 +131,10 @@ def update_entry(
     gemini_analysis: Optional[str] = None,
     user_text: Optional[str] = None,
     db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
     """更新日记条目（选定新诗 / 替换图片路径 / 修改备注）。"""
-    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id).first()
+    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id, DiaryEntry.user_id == user_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
     if poem_id is not None:
@@ -151,8 +158,9 @@ def list_entries(
     year: Optional[int] = None,
     month: Optional[int] = None,
     db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
-    q = db.query(DiaryEntry)
+    q = db.query(DiaryEntry).filter(DiaryEntry.user_id == user_id)
     if year and month:
         last_day = monthrange(year, month)[1]
         q = q.filter(
@@ -170,9 +178,15 @@ def list_entries(
 
 
 @router.get("/calendar")
-def calendar_view(year: int, month: int, db: Session = Depends(get_db)):
+def calendar_view(
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
     last_day = monthrange(year, month)[1]
     entries = db.query(DiaryEntry).filter(
+        DiaryEntry.user_id == user_id,
         DiaryEntry.date >= date(year, month, 1),
         DiaryEntry.date <= date(year, month, last_day),
     ).order_by(DiaryEntry.date, DiaryEntry.id).all()
@@ -194,8 +208,12 @@ def calendar_view(year: int, month: int, db: Session = Depends(get_db)):
 
 
 @router.get("/entries/{entry_id}")
-def get_entry(entry_id: int, db: Session = Depends(get_db)):
-    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id).first()
+def get_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id, DiaryEntry.user_id == user_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
     poem = db.query(Poem).filter(Poem.id == e.poem_id).first() if e.poem_id else None
@@ -203,8 +221,13 @@ def get_entry(entry_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/entries/{entry_id}", status_code=204)
-def delete_entry(entry_id: int, delete_photo: bool = True, db: Session = Depends(get_db)):
-    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id).first()
+def delete_entry(
+    entry_id: int,
+    delete_photo: bool = True,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id, DiaryEntry.user_id == user_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
     if delete_photo and e.photo_path:

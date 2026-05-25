@@ -12,11 +12,43 @@
   <div id="bg-image"></div>
   <div id="bg-overlay"></div>
 
+  <!-- Onboarding overlay (hidden until first visit) -->
+  <div id="onboarding-overlay">
+    <div id="onboarding-spotlight"></div>
+    <div id="onboarding-tooltip">
+      <p id="onboarding-tip"></p>
+      <div class="onboarding-actions">
+        <button id="onboarding-skip" class="btn-text-link">跳过</button>
+        <button id="onboarding-next" class="btn-outline-round">下一步</button>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
 
+    <!-- Phase 0: Auth -->
+    <section id="phase-auth" class="phase">
+      <div class="auth-content">
+        <h1 class="landing-title">拾句</h1>
+        <p class="landing-sub">将相片辅以诗句，点亮日历</p>
+        <div class="auth-form glass">
+          <input type="text" id="auth-username" placeholder="用户名" maxlength="20" autocomplete="username">
+          <div class="auth-divider"></div>
+          <input type="password" id="auth-password" placeholder="密码" maxlength="50" autocomplete="current-password">
+          <p id="auth-error" class="auth-error"></p>
+          <button id="auth-submit-btn" class="btn-primary">登录</button>
+        </div>
+        <button id="auth-toggle-btn" class="btn-text-link">还没有账号？注册</button>
+      </div>
+    </section>
+
     <!-- Phase 1: Landing -->
-    <section id="phase-landing" class="phase active">
+    <section id="phase-landing" class="phase">
       <div class="landing-content">
+        <div class="landing-user-row">
+          <span id="landing-username" class="landing-username"></span>
+          <button id="landing-logout-btn" class="btn-text-link" style="font-size:13px;margin-top:0">退出</button>
+        </div>
         <h1 class="landing-title">拾句</h1>
         <p class="landing-sub">将相片辅以诗句，点亮日历</p>
         <p class="landing-quote">人生不过采撷片刻，缀之成串。</p>

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.db import get_db
 from backend.models import Poem
+from backend.routes.auth import get_current_user_id
 
 router = APIRouter(prefix="/poems", tags=["poems"])
 
@@ -42,8 +43,9 @@ def list_poems(
     dynasty: Optional[str] = None,
     is_memorized: Optional[bool] = None,
     db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
-    q = db.query(Poem).filter(Poem.source == "personal")
+    q = db.query(Poem).filter(Poem.source == "personal", Poem.user_id == user_id)
     if ci_pai:
         q = q.filter(Poem.ci_pai == ci_pai)
     if author:
@@ -56,8 +58,11 @@ def list_poems(
 
 
 @router.get("/stats")
-def poem_stats(db: Session = Depends(get_db)):
-    poems = db.query(Poem).filter(Poem.source == "personal").all()
+def poem_stats(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    poems = db.query(Poem).filter(Poem.source == "personal", Poem.user_id == user_id).all()
     by_dynasty = defaultdict(int)
     by_ci_pai = defaultdict(int)
     memorized = 0
@@ -85,8 +90,12 @@ def get_poem(poem_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-def create_poem(body: PoemCreate, db: Session = Depends(get_db)):
-    poem = Poem(**body.model_dump(), source="personal")
+def create_poem(
+    body: PoemCreate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    poem = Poem(**body.model_dump(), source="personal", user_id=user_id)
     db.add(poem)
     db.commit()
     db.refresh(poem)
@@ -97,13 +106,19 @@ def create_poem(body: PoemCreate, db: Session = Depends(get_db)):
         "dynasty": poem.dynasty or "",
         "ci_pai": poem.ci_pai or "",
         "title": poem.title or "",
+        "user_id": str(user_id),
     })
     return poem_to_dict(poem)
 
 
 @router.patch("/{poem_id}/memorized")
-def update_memorized(poem_id: int, body: MemorizedUpdate, db: Session = Depends(get_db)):
-    p = db.query(Poem).filter(Poem.id == poem_id, Poem.source == "personal").first()
+def update_memorized(
+    poem_id: int,
+    body: MemorizedUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    p = db.query(Poem).filter(Poem.id == poem_id, Poem.source == "personal", Poem.user_id == user_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="诗词不存在")
     p.is_memorized = body.is_memorized
@@ -113,8 +128,12 @@ def update_memorized(poem_id: int, body: MemorizedUpdate, db: Session = Depends(
 
 
 @router.delete("/{poem_id}", status_code=204)
-def delete_poem(poem_id: int, db: Session = Depends(get_db)):
-    p = db.query(Poem).filter(Poem.id == poem_id, Poem.source == "personal").first()
+def delete_poem(
+    poem_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    p = db.query(Poem).filter(Poem.id == poem_id, Poem.source == "personal", Poem.user_id == user_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="诗词不存在")
     db.delete(p)

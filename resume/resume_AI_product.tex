@@ -1,0 +1,56 @@
+\documentclass{resume}
+\usepackage{zh_CN-Adobefonts_external}
+\usepackage{linespacing_fix}
+\usepackage{cite}
+\begin{document}
+\pagenumbering{gobble}
+
+\name{袁嘉岭}
+\otherInfo{微信：szyp1415}{电话：13851746321}{}{}
+\otherInfo{base地点：深圳，上海，南京，杭州}{邮箱：janeyuan018@g.ucla.edu}{}{}
+
+\section{教育背景}
+
+\datedsubsection{\textbf{加州大学洛杉矶分校(UCLA)} ｜ 大四 ｜ 已收到硕士offer}{2022.09 - 至今}
+\datedsubsection{\textbf{理学双专业：统计学，认知科学}| GPA:3.95}{}
+\datedsubsection{\textbullet\ \hspace{0.5em}专业课程:概率论，数理统计，实验设计，回归分析，多元分析，微分方程，机器学习等}{}
+\datedsubsection{\textbullet\ \hspace{0.5em}荣誉与奖项:连续三年学院嘉许名单、大阪大学JASSO奖学金}{}
+
+\section{实习经历}
+
+\datedsubsection{\textbf{阿里巴巴-阿里控股}}{2025.7 - 2025.9}
+\datedsubsection{\textit{大模型实习生}}{}
+\begin{itemize}[parsep=0.5ex]
+  \item \textbf{大模型评测基准构建}
+  \begin{itemize}[parsep=0.3ex]
+    \item 参与构建SKYLENAGE–MATH（150题竞赛风格套件，按七大学科分类，覆盖高中至博士四阶段）与SKYLENAGE–ReasoningMATH（100题结构感知诊断集，每题附长度、符号复杂度等元数据标注），负责题目筛选与质量评估。
+    \item 统一测试15个当代LLM变体，分析"学科×模型"与"年级×模型"表现矩阵；竞赛套件顶尖模型正确率44\%（次者37\%），推理集最优达81\%，最难子集揭示顶尖与中游模型稳健性差距超20个百分点。
+  \end{itemize}
+  \item \textbf{Agentic RAG 智能解题系统}
+  \begin{itemize}[parsep=0.3ex]
+    \item 基于Qwen-2.5-math设计DeReflectRPI框架（问题分解、迭代规划、反思机制），使模型在关键推理节点进行自我验证与错误修正；集成Python解释器工具调用，将精确计算外包执行，消除数值计算幻觉。
+    \item 构建高质量数学知识库，通过向量检索精准召回相关知识点辅助解答；端到端流程在内部竞赛题集上较基线提升约15\%解题准确率。
+  \end{itemize}
+\end{itemize}
+
+\section{项目经历}
+
+\datedsubsection{\textbf{拾句——多模态AI配诗应用}（独立设计开发，已公开部署）}{2025.05}
+\begin{itemize}[parsep=0.5ex]
+  \item \textbf{产品设计：}从零构思并落地"以图配诗"核心链路——用户上传照片，Gemini Vision API提取意境/意象/季节/诗风四维关键词，经RAG架构在38万首古诗词向量库中语义检索，推荐2-3首兼顾相关性与流传度的诗词；主导产品定义、后端架构与云端部署，完成从原型到上线的完整交付。
+  \item \textbf{算法设计：}以BGE-small-zh向量相似度为基础，叠加作者名气系数（李白/杜甫×1.30）、诗长度系数与三层去重逻辑（元数据去重/内容指纹去标点/同题保留高分），解决古典诗词数据集大量版本重复与作者争议问题；扩大候选池至60条并引入分层相似度门槛（顶级名家≥0.10，无名氏≥0.30），显著提升推荐结果的流传度与可读性。
+  \item \textbf{工程落地：}FastAPI + Docker + Railway PaaS，Cloudflare R2对象存储实现跨部署数据持久化；排查并修复容器冷启动时序bug，确保38万条语料库与向量索引每次部署后正确初始化；端到端配诗响应（图像分析+向量检索+排序）在生产环境中稳定完成，支持移动端相册与拍照双入口。
+\end{itemize}
+
+\section{语言与技能}
+
+\begin{itemize}[parsep=0.5ex]
+  \item 熟练使用 AI Coding 工具，了解 LangChain、ChromaDB 等 Agent 开发工具链，具备分层 RAG 搭建与应用原型开发经验。
+  \item 具备 Prompt 分层设计、Badcase 驱动迭代、Skill 模块化拆分与 A/B 测试验证等 AI 产品实践经验。
+  \item 具备用户调研、竞品分析、需求拆解、优先级规划、PRD 撰写与原型输出能力。
+  \item 能够围绕用户问题梳理核心链路与边界场景，基于数据反馈驱动产品迭代。
+  \item 熟练使用 Python、SQL、Excel 进行数据整理与分析，熟悉 Figma、Axure 进行原型设计。
+  \item 英语六级，具有良好的英文资料阅读与沟通能力。
+\end{itemize}
+
+\end{document}

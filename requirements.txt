@@ -12,3 +12,5 @@ python-multipart
 zhconv
 rich
 boto3
+python-jose[cryptography]
+passlib[bcrypt]
