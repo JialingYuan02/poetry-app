@@ -20,7 +20,11 @@ def _apply_migrations():
     """Add new columns/tables to existing DB without breaking old data."""
     import sqlalchemy
     from backend.db import engine
+    from backend.models import Base
     try:
+        # Ensure all tables exist first (idempotent; safe to call after R2 restore)
+        Base.metadata.create_all(bind=engine)
+
         with engine.connect() as conn:
             def has_column(table, col):
                 rows = conn.execute(sqlalchemy.text(f"PRAGMA table_info({table})")).fetchall()

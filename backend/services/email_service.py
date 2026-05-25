@@ -32,7 +32,7 @@ def send_otp_email(to_email: str, otp: str) -> None:
     msg["From"] = f"拾句 <{SMTP_USER}>"
     msg["To"] = to_email
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
         smtp.ehlo()
         smtp.starttls()
         smtp.login(SMTP_USER, SMTP_PASSWORD)
