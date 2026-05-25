@@ -83,6 +83,11 @@ function showPhase(id) {
   document.getElementById(id).classList.add("active");
   bgOverlay.classList.toggle("dim", NO_PHOTO_PHASES.has(id));
 
+  // dismiss onboarding if user navigates away from upload
+  if (id !== "phase-upload" && onboardingOverlay.classList.contains("active")) {
+    finishOnboarding();
+  }
+
   if (id === "phase-upload" && state._pendingOnboarding) {
     state._pendingOnboarding = false;
     setTimeout(startOnboarding, 320);
