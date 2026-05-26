@@ -50,8 +50,18 @@ function todayISO() {
 }
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
+const bgStatic       = document.getElementById("bg-static");
 const bgImage        = document.getElementById("bg-image");
 const bgOverlay      = document.getElementById("bg-overlay");
+
+const PHASE_BG = {
+  "phase-auth":     "/static/img/bg-auth.jpg",
+  "phase-landing":  "/static/img/bg-auth.jpg",
+  "phase-upload":   "/static/img/bg-upload.jpg",
+  "phase-loading":  "/static/img/bg-upload.jpg",
+  "phase-calendar": "/static/img/bg-calendar.jpg",
+  "phase-poems":    "/static/img/bg-calendar.jpg",
+};
 const photoInput     = document.getElementById("photo-input");
 const uploadZone     = document.getElementById("upload-zone");
 const uploadInner    = document.getElementById("upload-inner");
@@ -81,6 +91,14 @@ function showPhase(id) {
   document.querySelectorAll(".phase").forEach(el => el.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   bgOverlay.classList.toggle("dim", NO_PHOTO_PHASES.has(id));
+
+  const bgUrl = PHASE_BG[id];
+  if (bgUrl) {
+    bgStatic.style.backgroundImage = `url(${bgUrl})`;
+    bgStatic.classList.add("visible");
+  } else {
+    bgStatic.classList.remove("visible");
+  }
 
   // dismiss onboarding if user navigates away from upload
   if (id !== "phase-upload" && onboardingOverlay.classList.contains("active")) {
