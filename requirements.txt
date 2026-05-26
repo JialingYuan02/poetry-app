@@ -14,4 +14,3 @@ rich
 boto3
 python-jose[cryptography]
 passlib[bcrypt]
-resend

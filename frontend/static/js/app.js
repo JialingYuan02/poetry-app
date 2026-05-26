@@ -108,15 +108,10 @@ function setPhotoBg(photoPath, blurred = false) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const authToggleBtn = document.getElementById("auth-toggle-btn");
 
-let regEmail = "";
-let regOtp   = "";
-
 function showAuthStep(step) {
-  // step: "login" | "reg-email" | "reg-otp" | "reg-profile"
-  document.getElementById("auth-step-login").style.display   = step === "login"       ? "" : "none";
-  document.getElementById("auth-step-email").style.display   = step === "reg-email"   ? "" : "none";
-  document.getElementById("auth-step-otp").style.display     = step === "reg-otp"     ? "" : "none";
-  document.getElementById("auth-step-profile").style.display = step === "reg-profile" ? "" : "none";
+  // step: "login" | "register"
+  document.getElementById("auth-step-login").style.display    = step === "login"    ? "" : "none";
+  document.getElementById("auth-step-register").style.display = step === "register" ? "" : "none";
   authToggleBtn.textContent = step === "login" ? "还没有账号？注册" : "已有账号？登录";
 }
 
@@ -130,10 +125,10 @@ function _saveAuth(token, username) {
 
 authToggleBtn.addEventListener("click", () => {
   const isLogin = document.getElementById("auth-step-login").style.display !== "none";
-  showAuthStep(isLogin ? "reg-email" : "login");
+  showAuthStep(isLogin ? "register" : "login");
 });
 
-// Step A: Login
+// Login
 const loginBtn = document.getElementById("auth-login-btn");
 loginBtn.addEventListener("click", async () => {
   const email    = document.getElementById("auth-email-login").value.trim();
@@ -169,73 +164,16 @@ document.getElementById("auth-password-login").addEventListener("keydown", (e) =
   if (e.key === "Enter") loginBtn.click();
 });
 
-// Step B: Send OTP
-const sendOtpBtn = document.getElementById("auth-send-otp-btn");
-sendOtpBtn.addEventListener("click", async () => {
-  const email = document.getElementById("auth-email-reg").value.trim();
-  const errEl = document.getElementById("auth-error-email");
-  errEl.textContent = "";
-
-  if (!email) { errEl.textContent = "请输入邮箱"; return; }
-
-  sendOtpBtn.disabled = true;
-  sendOtpBtn.textContent = "发送中…";
-  try {
-    const resp = await fetch("/auth/request-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const data = await resp.json();
-    if (!resp.ok) { errEl.textContent = data.detail || "发送失败"; return; }
-    regEmail = email;
-    document.getElementById("auth-otp-hint").textContent = `验证码已发送至 ${email}`;
-    document.getElementById("auth-error-otp").textContent = "";
-    document.getElementById("auth-otp-input").value = "";
-    showAuthStep("reg-otp");
-    document.getElementById("auth-otp-input").focus();
-  } catch {
-    errEl.textContent = "网络错误，请重试";
-  } finally {
-    sendOtpBtn.disabled = false;
-    sendOtpBtn.textContent = "发送验证码";
-  }
-});
-document.getElementById("auth-email-reg").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendOtpBtn.click();
-});
-
-// Step C: Verify OTP → move to profile
-const verifyOtpBtn = document.getElementById("auth-verify-otp-btn");
-verifyOtpBtn.addEventListener("click", () => {
-  const otp   = document.getElementById("auth-otp-input").value.trim();
-  const errEl = document.getElementById("auth-error-otp");
-  errEl.textContent = "";
-
-  if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
-    errEl.textContent = "请输入 6 位数字验证码";
-    return;
-  }
-  regOtp = otp;
-  document.getElementById("auth-nickname").value = "";
-  document.getElementById("auth-password-reg").value = "";
-  document.getElementById("auth-error-profile").textContent = "";
-  showAuthStep("reg-profile");
-  document.getElementById("auth-nickname").focus();
-});
-document.getElementById("auth-otp-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") verifyOtpBtn.click();
-});
-
-// Step D: Complete registration
+// Register
 const registerBtn = document.getElementById("auth-register-btn");
 registerBtn.addEventListener("click", async () => {
+  const email    = document.getElementById("auth-email-reg").value.trim();
   const username = document.getElementById("auth-nickname").value.trim();
   const password = document.getElementById("auth-password-reg").value;
-  const errEl    = document.getElementById("auth-error-profile");
+  const errEl    = document.getElementById("auth-error-reg");
   errEl.textContent = "";
 
-  if (!username) { errEl.textContent = "请输入昵称"; return; }
+  if (!email || !username || !password) { errEl.textContent = "请填写所有字段"; return; }
   if (password.length < 6) { errEl.textContent = "密码至少 6 位"; return; }
 
   registerBtn.disabled = true;
@@ -244,25 +182,26 @@ registerBtn.addEventListener("click", async () => {
     const resp = await fetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: regEmail, otp: regOtp, username, password }),
+      body: JSON.stringify({ email, username, password }),
     });
     const data = await resp.json();
     if (!resp.ok) { errEl.textContent = data.detail || "注册失败"; return; }
 
-    // Auto-login: pre-fill and visually submit login form
+    // Auto-login after registration
     state._pendingOnboarding = true;
-    const emailLoginEl = document.getElementById("auth-email-login");
-    const pwLoginEl    = document.getElementById("auth-password-login");
-    emailLoginEl.value = regEmail;
-    pwLoginEl.value    = password;
+    document.getElementById("auth-email-login").value    = email;
+    document.getElementById("auth-password-login").value = password;
     showAuthStep("login");
-    setTimeout(() => loginBtn.click(), 500);
+    setTimeout(() => loginBtn.click(), 400);
   } catch {
     errEl.textContent = "网络错误，请重试";
   } finally {
     registerBtn.disabled = false;
-    registerBtn.textContent = "完成注册";
+    registerBtn.textContent = "注册";
   }
+});
+document.getElementById("auth-email-reg").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("auth-nickname").focus();
 });
 document.getElementById("auth-nickname").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("auth-password-reg").focus();
