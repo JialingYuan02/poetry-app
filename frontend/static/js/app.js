@@ -87,7 +87,8 @@ function showPhase(id) {
     finishOnboarding();
   }
 
-  if (id === "phase-upload" && state._pendingOnboarding) {
+  const needsOnboarding = state._pendingOnboarding || !localStorage.getItem("shiju_onboarded");
+  if (id === "phase-upload" && needsOnboarding) {
     state._pendingOnboarding = false;
     setTimeout(startOnboarding, 320);
   }
