@@ -7,6 +7,7 @@ from backend.routes.auth import get_optional_user_id
 from backend.routes.poems import poem_to_dict
 from backend.routes.search import FAMOUS_POETS, _fame_bonus, _title_penalty, _dedup_candidates
 
+import asyncio
 import io
 import json
 import os
@@ -101,11 +102,14 @@ async def match_photo(
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="图片不能超过 10MB")
 
-    photo_path = _save_photo(image_bytes)
-
     from backend.services.vision import VisionService
     vision = VisionService()
-    analysis = vision.analyze_for_poetry(image_bytes)
+
+    # 保存图片和 Gemini 分析并行执行，节省 0.5-1 秒
+    photo_path, analysis = await asyncio.gather(
+        asyncio.to_thread(_save_photo, image_bytes),
+        asyncio.to_thread(vision.analyze_for_poetry, image_bytes),
+    )
 
     gemini_error = analysis.get("error")
     if gemini_error and not user_text.strip():

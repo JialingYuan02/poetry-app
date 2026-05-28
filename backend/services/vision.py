@@ -36,33 +36,40 @@ class VisionService:
 
     def analyze_for_poetry(self, image_bytes: bytes) -> dict:
         """返回结构化意境分析，专为古诗检索设计。"""
+        # 缩小图片再发给 Gemini：意境分析不需要原图分辨率，节省 2-5 秒上传时间
+        MAX_DIM = 1024
         try:
             img = Image.open(io.BytesIO(image_bytes))
-            # 转为 RGB（处理 PNG/RGBA 等格式）
             if img.mode != "RGB":
                 img = img.convert("RGB")
+            if img.width > MAX_DIM or img.height > MAX_DIM:
+                img.thumbnail((MAX_DIM, MAX_DIM), Image.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="JPEG")
+            img.save(buf, format="JPEG", quality=82)
             jpeg_bytes = buf.getvalue()
-
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[
-                    types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
-                    POETRY_PROMPT,
-                ],
-                config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
-                ),
-            )
-            return _parse_poetry_analysis(response.text.strip())
         except Exception as e:
-            err = str(e).lower()
-            if "quota" in err or "rate" in err or "429" in err:
-                return {"error": "Gemini API 配额限制，请稍后重试"}
-            if "not found" in err or "404" in err or "invalid" in err:
-                return {"error": f"Gemini 模型错误：{e}"}
-            return {"error": f"图片分析失败：{e}"}
+            return {"error": f"图片处理失败：{e}"}
+
+        for attempt in range(2):          # 遇到限速时自动重试一次
+            try:
+                response = self.client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=[
+                        types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
+                        POETRY_PROMPT,
+                    ],
+                )
+                return _parse_poetry_analysis(response.text.strip())
+            except Exception as e:
+                err = str(e).lower()
+                if ("quota" in err or "rate" in err or "429" in err) and attempt == 0:
+                    import time
+                    time.sleep(1.5)
+                    continue
+                if "not found" in err or "404" in err or "invalid" in err:
+                    return {"error": f"Gemini 模型错误：{e}"}
+                return {"error": f"图片分析失败：{e}"}
+        return {"error": "Gemini API 配额限制，请稍后重试"}
 
     def build_search_text(self, analysis: dict, user_text: str = "") -> str:
         """合并 Gemini 分析 + 用户文字为检索字符串，用户文字权重翻倍。"""
