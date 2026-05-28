@@ -53,7 +53,7 @@ class VisionService:
         for attempt in range(2):          # 遇到限速时自动重试一次
             try:
                 response = self.client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model="gemini-2.5-flash",
                     contents=[
                         types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
                         POETRY_PROMPT,
