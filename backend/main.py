@@ -71,7 +71,7 @@ async def _download_data():
 
 
 def _prewarm_embedder():
-    """启动时加载 BGE 模型和 ChromaDB，避免第一次请求时的冷启动延迟。"""
+    """加载 BGE 模型和 ChromaDB，避免第一次请求时的冷启动延迟。"""
     try:
         from backend.services.embedder import EmbedderService
         svc = EmbedderService()
@@ -80,11 +80,23 @@ def _prewarm_embedder():
         logger.exception("EmbedderService 预热失败（非致命）")
 
 
+async def _download_and_prewarm():
+    """先下载数据，再重置单例并预热——避免预热跑在下载之前拿到空库。"""
+    await _download_data()
+    # 下载完后重置单例，确保 EmbedderService 从完整数据重新初始化
+    try:
+        from backend.services.embedder import EmbedderService
+        EmbedderService._instance = None
+        logger.info("EmbedderService 单例已重置，开始预热…")
+    except Exception:
+        pass
+    await asyncio.to_thread(_prewarm_embedder)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _apply_migrations()
-    asyncio.create_task(_download_data())
-    asyncio.create_task(asyncio.to_thread(_prewarm_embedder))
+    asyncio.create_task(_download_and_prewarm())
     yield
 
 
