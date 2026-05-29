@@ -371,13 +371,28 @@ input[type="date"] {
   text-align: left;
   padding: 0 22px;
 }
+#phase-result {
+  /* 限定最大高度，防止长诗撑破屏幕把按钮挤出去 */
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+}
+
 #cards-row {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;        /* 占满 phase-result 剩余空间 */
+  min-height: 0;  /* 允许 flex 子项收缩 */
 }
-#cards-viewport { flex: 1; min-width: 0; }
+
+#cards-viewport {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;                  /* 长诗在此滚动 */
+  -webkit-overflow-scrolling: touch; /* iOS 惯性滚动 */
+  max-height: 100%;
+}
 
 .poem-card {
   padding: 24px 22px 20px;
