@@ -7,6 +7,10 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/personal/poetry.db")
 
+# Railway 提供的 PostgreSQL URL 以 postgres:// 开头，SQLAlchemy 需要 postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 if DATABASE_URL.startswith("sqlite"):
     _db_file = DATABASE_URL.replace("sqlite:///", "").replace("sqlite://", "")
     _db_dir = os.path.dirname(_db_file)

@@ -13,4 +13,5 @@ zhconv
 rich
 boto3
 python-jose[cryptography]
+psycopg2-binary
 bcrypt
