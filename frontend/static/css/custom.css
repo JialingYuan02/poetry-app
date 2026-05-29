@@ -518,21 +518,23 @@ input[type="date"] {
   align-items: center;
 }
 .cal-icon-btn {
-  background: none;
-  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.30);
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  color: var(--text-mid);
+  width: 32px;
+  height: 32px;
+  color: var(--text-hi);
   font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, border-color 0.2s;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
   font-family: inherit;
 }
-.cal-icon-btn:hover { color: var(--gold); border-color: var(--gold); }
+.cal-icon-btn:hover { color: var(--gold); border-color: var(--gold); background: rgba(201, 169, 110, 0.12); }
 
 .cal-weekdays {
   display: grid;
@@ -824,8 +826,8 @@ input[type="date"] {
   transition: color 0.25s, border-color 0.25s;
 }
 .btn-ghost-sm:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.28); }
-.btn-ghost-sm.danger { color: rgba(220,100,90,0.70); border-color: rgba(200,80,70,0.25); }
-.btn-ghost-sm.danger:hover { color: rgba(230,120,110,0.95); border-color: rgba(200,80,70,0.50); }
+.btn-ghost-sm.danger { color: rgba(230, 100, 90, 0.92); border-color: rgba(200, 80, 70, 0.55); }
+.btn-ghost-sm.danger:hover { color: #f08070; border-color: rgba(220, 100, 90, 0.85); background: rgba(200, 70, 60, 0.12); }
 
 .detail-back-btn {
   font-family: inherit;
