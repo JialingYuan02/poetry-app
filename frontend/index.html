@@ -96,10 +96,12 @@
         <input type="text" id="mood-input" placeholder="此刻的心情… （可选）" maxlength="50" autocomplete="off">
       </div>
 
-      <div class="input-wrap glass date-wrap">
+      <div class="input-wrap glass date-wrap" id="date-row">
         <span class="date-label">日期</span>
-        <input type="date" id="date-input">
+        <button id="date-display-btn" class="date-display-btn" type="button"></button>
       </div>
+      <!-- native input hidden; used only as internal state carrier -->
+      <input type="date" id="date-input" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
 
       <button id="match-btn" class="btn-primary" disabled>配　诗</button>
       <button id="to-calendar-btn" class="btn-ghost">查看日历</button>
@@ -165,6 +167,20 @@
       <div id="poems-list"></div>
     </section>
 
+  </div>
+
+  <!-- Custom date picker overlay (outside phases so it floats above everything) -->
+  <div id="cdp-backdrop" hidden></div>
+  <div id="custom-datepicker" class="custom-datepicker" hidden>
+    <div class="cdp-header">
+      <button class="cdp-nav" id="cdp-prev" type="button">&#8249;</button>
+      <span id="cdp-title" class="cdp-title"></span>
+      <button class="cdp-nav" id="cdp-next" type="button">&#8250;</button>
+    </div>
+    <div class="cdp-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div id="cdp-grid" class="cdp-grid"></div>
   </div>
 
   <script src="static/js/app.js" type="module"></script>

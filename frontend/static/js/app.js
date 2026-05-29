@@ -770,6 +770,97 @@ onboardingNext.addEventListener("click", () => {
 
 onboardingSkip.addEventListener("click", finishOnboarding);
 
+// ── Custom date picker ────────────────────────────────────────────────────────
+{
+  const displayBtn = document.getElementById("date-display-btn");
+  const backdrop   = document.getElementById("cdp-backdrop");
+  const picker     = document.getElementById("custom-datepicker");
+  const titleEl    = document.getElementById("cdp-title");
+  const gridEl     = document.getElementById("cdp-grid");
+  const prevBtn    = document.getElementById("cdp-prev");
+  const nextBtn    = document.getElementById("cdp-next");
+
+  let pYear  = new Date().getFullYear();
+  let pMonth = new Date().getMonth() + 1;
+
+  function updateDisplay() {
+    displayBtn.textContent = (dateInput.value || todayISO()).replace(/-/g, " · ");
+  }
+
+  // Intercept dateInput.value= so any existing code that sets it also refreshes the label
+  const _nv = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(dateInput, 'value', {
+    get() { return _nv.get.call(this); },
+    set(v) { _nv.set.call(this, v); if (v) updateDisplay(); },
+    configurable: true,
+  });
+
+  function openPicker() {
+    const [y, m] = (dateInput.value || todayISO()).split('-');
+    pYear  = parseInt(y);
+    pMonth = parseInt(m);
+    renderGrid();
+    picker.hidden  = false;
+    backdrop.hidden = false;
+  }
+
+  function closePicker() {
+    picker.hidden  = true;
+    backdrop.hidden = true;
+  }
+
+  function renderGrid() {
+    const todayStr    = todayISO();
+    const nowD        = new Date();
+    const isThisMon   = pYear === nowD.getFullYear() && pMonth === nowD.getMonth() + 1;
+    const firstDay    = new Date(pYear, pMonth - 1, 1).getDay();
+    const daysInMonth = new Date(pYear, pMonth, 0).getDate();
+    const pad         = n => String(n).padStart(2, '0');
+    const selDate     = dateInput.value || todayStr;
+
+    titleEl.textContent = CN_MONTHS[pMonth - 1] + '　' + pYear;
+    nextBtn.disabled    = isThisMon;
+
+    const cells = [];
+    // blank spacers so day 1 lands on the right weekday column
+    for (let i = 0; i < firstDay; i++) cells.push('<div></div>');
+    // only this month's days — no overflow from adjacent months
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds  = `${pYear}-${pad(pMonth)}-${pad(d)}`;
+      let   cls = 'cdp-day';
+      if (ds === selDate)       cls += ' selected';
+      else if (ds === todayStr) cls += ' today';
+      if (ds > todayStr)        cls += ' disabled';
+      cells.push(`<div class="${cls}" data-date="${ds}">${d}</div>`);
+    }
+    gridEl.innerHTML = cells.join('');
+
+    gridEl.querySelectorAll('.cdp-day:not(.disabled)').forEach(el => {
+      el.addEventListener('click', () => {
+        state.uploadDate = el.dataset.date;
+        dateInput.value  = el.dataset.date; // setter → updateDisplay()
+        closePicker();
+      });
+    });
+  }
+
+  displayBtn.addEventListener('click', () => picker.hidden ? openPicker() : closePicker());
+  prevBtn.addEventListener('click', () => {
+    if (--pMonth < 1) { pMonth = 12; pYear--; }
+    renderGrid();
+  });
+  nextBtn.addEventListener('click', () => {
+    if (!nextBtn.disabled) {
+      if (++pMonth > 12) { pMonth = 1; pYear++; }
+      renderGrid();
+    }
+  });
+  backdrop.addEventListener('click', closePicker);
+
+  // Initial render of the display label
+  updateDisplay();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (authToken) {
   document.getElementById("landing-username").textContent = authUsername || "";
