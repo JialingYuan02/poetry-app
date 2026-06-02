@@ -132,10 +132,11 @@ def update_entry(
     note: Optional[str] = None,
     gemini_analysis: Optional[str] = None,
     user_text: Optional[str] = None,
+    entry_date: Optional[str] = None,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """更新日记条目（选定新诗 / 替换图片路径 / 修改备注）。"""
+    """更新日记条目（选定新诗 / 替换图片路径 / 修改备注 / 改日期）。"""
     e = db.query(DiaryEntry).filter(DiaryEntry.id == entry_id, DiaryEntry.user_id == user_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="日记不存在")
@@ -149,6 +150,11 @@ def update_entry(
         e.gemini_analysis = gemini_analysis
     if user_text is not None:
         e.user_text = user_text
+    if entry_date is not None:
+        try:
+            e.date = date.fromisoformat(entry_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="日期格式错误，应为 YYYY-MM-DD")
     db.commit()
     db.refresh(e)
     poem = db.query(Poem).filter(Poem.id == e.poem_id).first() if e.poem_id else None

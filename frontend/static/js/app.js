@@ -584,6 +584,7 @@ function renderDayPanel(dateStr) {
         ` : ""}
         <div class="panel-actions">
           <button class="btn-ghost-sm rematch-btn" data-entry-id="${entry.id}">重新配诗</button>
+          <button class="btn-ghost-sm change-date-btn" data-entry-id="${entry.id}" data-date="${entry.date}">更改日期</button>
           <button class="btn-ghost-sm danger delete-btn" data-entry-id="${entry.id}">删除</button>
         </div>
       </div>
@@ -607,6 +608,10 @@ function renderDayPanel(dateStr) {
     btn.addEventListener("click", () => rematchEntry(parseInt(btn.dataset.entryId)));
   });
 
+  calPanelInner.querySelectorAll(".change-date-btn").forEach(btn => {
+    btn.addEventListener("click", () => changeEntryDate(parseInt(btn.dataset.entryId), btn.dataset.date));
+  });
+
   calPanelInner.querySelectorAll(".delete-btn").forEach(btn => {
     btn.addEventListener("click", () => deleteEntry(parseInt(btn.dataset.entryId), dateStr));
   });
@@ -614,6 +619,29 @@ function renderDayPanel(dateStr) {
   calPanelInner.querySelectorAll(".panel-photo").forEach(img => {
     img.addEventListener("click", () => setPhotoBg(img.src.replace("/photo/", ""), false));
   });
+}
+
+async function changeEntryDate(entryId, currentDate) {
+  const input = document.createElement("input");
+  input.type = "date";
+  input.value = currentDate;
+  input.style.cssText = "position:absolute;opacity:0;pointer-events:none;width:0;height:0";
+  document.body.appendChild(input);
+  input.showPicker?.();
+  input.addEventListener("change", async () => {
+    const newDate = input.value;
+    document.body.removeChild(input);
+    if (!newDate || newDate === currentDate) return;
+    const params = new URLSearchParams({ entry_date: newDate });
+    const resp = await apiFetch(`/diary/entries/${entryId}?${params}`, { method: "PATCH" });
+    if (!resp.ok) { alert("更改日期失败"); return; }
+    await loadCalendar();
+    const dateStr = newDate;
+    state.selectedDay = dateStr;
+    renderCalendar();
+    await openDayPanel(dateStr);
+  });
+  input.addEventListener("cancel", () => document.body.removeChild(input));
 }
 
 async function deleteEntry(entryId, dateStr) {
