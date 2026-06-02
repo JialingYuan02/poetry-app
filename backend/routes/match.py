@@ -74,8 +74,10 @@ def _run_search(search_text: str, db: Session) -> list:
     """向量搜索 → 打分 → 去重 → 返回 top3。"""
     from backend.services.embedder import EmbedderService
     embedder = EmbedderService()
-    if embedder.corpus.count() == 0:
-        raise HTTPException(status_code=503, detail="语料库尚未初始化")
+    count = embedder.corpus.count()
+    if count < 10000:
+        # Vectorstore still downloading/initializing at startup
+        raise HTTPException(status_code=503, detail="语料库正在初始化，请等待约 30-60 秒后重试")
 
     hits = embedder.search_corpus(search_text, n_results=60)
     candidates = []
@@ -94,7 +96,28 @@ def _run_search(search_text: str, db: Session) -> list:
             continue
         d["score"] = score
         candidates.append(d)
-    return _dedup_candidates(candidates)[:3]
+    result = _dedup_candidates(candidates)[:3]
+
+    # Fallback: if strict scoring filtered everything out, return top-3 by raw similarity × fame
+    if not result:
+        fallback = []
+        seen_fb: set = set()
+        for hit in hits:
+            if hit["poem_id"] in seen_fb:
+                continue
+            p = db.query(Poem).filter(Poem.id == hit["poem_id"]).first()
+            if not p:
+                continue
+            seen_fb.add(p.id)
+            d = poem_to_dict(p)
+            base = round(1 - hit["distance"], 4)
+            d["score"] = round(base * _fame_bonus(d.get("author")), 4)
+            fallback.append(d)
+            if len(fallback) >= 3:
+                break
+        result = fallback
+
+    return result
 
 
 @router.post("/photo")

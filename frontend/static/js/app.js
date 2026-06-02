@@ -284,6 +284,7 @@ dateInput.addEventListener("change", () => {
 
 matchBtn.addEventListener("click", async () => {
   if (!state.selectedFile) return;
+  document.getElementById("match-error").style.display = "none";
   showPhase("phase-loading");
   bgImage.classList.add("blurred");
 
@@ -307,9 +308,12 @@ matchBtn.addEventListener("click", async () => {
     bgImage.classList.remove("blurred");
     showPhase("phase-result");
   } catch (err) {
-    alert(err.message);
     showPhase("phase-upload");
     bgImage.classList.remove("blurred");
+    const matchError = document.getElementById("match-error");
+    matchError.textContent = err.message;
+    matchError.style.display = "block";
+    setTimeout(() => { matchError.style.display = "none"; }, 8000);
   }
 });
 
