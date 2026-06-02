@@ -58,7 +58,7 @@ def backup_db() -> None:
         from botocore.client import Config
         from pathlib import Path
 
-        db_path = Path("data/personal/poetry.db")
+        db_path = Path(__file__).parent.parent / "data" / "personal" / "poetry.db"
         if not db_path.exists():
             return
         client = boto3.client(
