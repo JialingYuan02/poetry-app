@@ -52,15 +52,27 @@ def _apply_migrations():
 def backup_db() -> None:
     """Upload poetry.db to R2. Call after any user-data write (register, save entry, delete)."""
     if not (os.environ.get("R2_ACCOUNT_ID") and os.environ.get("R2_ACCESS_KEY_ID")):
+        logger.warning("backup_db: R2 env vars not set, skipping")
         return
-    try:
-        import boto3
-        from botocore.client import Config
-        from pathlib import Path
+    import sqlite3
+    import boto3
+    from botocore.client import Config
+    from pathlib import Path
 
-        db_path = Path(__file__).parent.parent / "data" / "personal" / "poetry.db"
-        if not db_path.exists():
-            return
+    db_path = Path(__file__).parent.parent / "data" / "personal" / "poetry.db"
+    logger.info("backup_db: path=%s exists=%s", db_path, db_path.exists())
+    if not db_path.exists():
+        logger.error("backup_db: DB file not found at %s", db_path)
+        return
+
+    # Checkpoint WAL so main DB file contains all committed data before upload
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except Exception:
+        logger.warning("backup_db: WAL checkpoint failed (continuing anyway)")
+
+    try:
         client = boto3.client(
             "s3",
             endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
@@ -69,10 +81,11 @@ def backup_db() -> None:
             config=Config(signature_version="s3v4"),
             region_name="auto",
         )
+        size_kb = db_path.stat().st_size // 1024
         client.upload_file(str(db_path), os.environ["R2_BUCKET"], "backups/poetry.db")
-        logger.info("poetry.db backed up to R2")
+        logger.info("backup_db: SUCCESS — uploaded %d KB to R2", size_kb)
     except Exception:
-        logger.exception("DB backup to R2 failed (non-fatal)")
+        logger.exception("backup_db: FAILED to upload to R2")
 
 
 async def _download_data():
