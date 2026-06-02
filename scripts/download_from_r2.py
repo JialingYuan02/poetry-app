@@ -61,16 +61,20 @@ def _db_populated(db_path: Path) -> bool:
 def main():
     client = make_client()
 
-    # --- poetry.db ---
-    db_path = BASE_DIR / "data" / "personal" / "poetry.db"
-    if _db_populated(db_path):
-        print("poetry.db 已存在且有数据，跳过下载。")
+    # --- poetry.db (SQLite only; PostgreSQL gets poems via direct import) ---
+    database_url = os.environ.get("DATABASE_URL", "sqlite")
+    if database_url.startswith("postgresql") or database_url.startswith("postgres://"):
+        print("PostgreSQL 模式：跳过 poetry.db 下载（诗词将直接导入 PostgreSQL）")
     else:
-        print("下载 poetry.db ...")
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        client.download_file(BUCKET, "backups/poetry.db", str(db_path))
-        mb = db_path.stat().st_size / 1024 / 1024
-        print(f"  ✓ 完成（{mb:.0f} MB）\n")
+        db_path = BASE_DIR / "data" / "personal" / "poetry.db"
+        if _db_populated(db_path):
+            print("poetry.db 已存在且有数据，跳过下载。")
+        else:
+            print("下载 poetry.db ...")
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            client.download_file(BUCKET, "backups/poetry.db", str(db_path))
+            mb = db_path.stat().st_size / 1024 / 1024
+            print(f"  ✓ 完成（{mb:.0f} MB）\n")
 
     # --- vectorstore/ ---
     vs_marker = BASE_DIR / "vectorstore" / "chroma.sqlite3"
