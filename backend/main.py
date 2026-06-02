@@ -49,6 +49,32 @@ def _apply_migrations():
         logger.exception("Migration failed (non-fatal)")
 
 
+def backup_db() -> None:
+    """Upload poetry.db to R2. Call after any user-data write (register, save entry, delete)."""
+    if not (os.environ.get("R2_ACCOUNT_ID") and os.environ.get("R2_ACCESS_KEY_ID")):
+        return
+    try:
+        import boto3
+        from botocore.client import Config
+        from pathlib import Path
+
+        db_path = Path("data/personal/poetry.db")
+        if not db_path.exists():
+            return
+        client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            config=Config(signature_version="s3v4"),
+            region_name="auto",
+        )
+        client.upload_file(str(db_path), os.environ["R2_BUCKET"], "backups/poetry.db")
+        logger.info("poetry.db backed up to R2")
+    except Exception:
+        logger.exception("DB backup to R2 failed (non-fatal)")
+
+
 async def _download_data():
     if not (os.environ.get("R2_ACCOUNT_ID") and os.environ.get("R2_ACCESS_KEY_ID")):
         return

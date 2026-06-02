@@ -1,8 +1,7 @@
 import re
-from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -53,7 +52,7 @@ class LoginBody(BaseModel):
 
 
 @router.post("/register")
-def register(body: RegisterBody, db: Session = Depends(get_db)):
+def register(body: RegisterBody, bg: BackgroundTasks, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
     username = body.username.strip()
 
@@ -73,6 +72,8 @@ def register(body: RegisterBody, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    from backend.main import backup_db
+    bg.add_task(backup_db)
     return {"token": create_access_token(user.id), "username": user.username, "email": user.email}
 
 

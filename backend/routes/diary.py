@@ -4,7 +4,7 @@ from calendar import monthrange
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -45,6 +45,7 @@ class SaveMatchBody(BaseModel):
 @router.post("/save", status_code=201)
 def save_match(
     body: SaveMatchBody,
+    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
@@ -71,6 +72,8 @@ def save_match(
     db.add(UserLog(action="save_match", result_poem_id=body.poem_id, user_id=user_id))
     db.commit()
     db.refresh(entry)
+    from backend.main import backup_db
+    bg.add_task(backup_db)
     return entry_to_dict(entry, poem)
 
 
@@ -223,6 +226,7 @@ def get_entry(
 @router.delete("/entries/{entry_id}", status_code=204)
 def delete_entry(
     entry_id: int,
+    bg: BackgroundTasks,
     delete_photo: bool = True,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
@@ -235,3 +239,5 @@ def delete_entry(
         storage_delete(e.photo_path)
     db.delete(e)
     db.commit()
+    from backend.main import backup_db
+    bg.add_task(backup_db)
