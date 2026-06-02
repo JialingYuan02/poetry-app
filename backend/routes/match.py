@@ -58,7 +58,14 @@ def _save_photo(image_bytes: bytes) -> str:
     filename = f"{date.today().isoformat()}_{uuid.uuid4().hex[:8]}.jpg"
     relative_path = f"personal/photos/{filename}"
     buf = io.BytesIO()
-    Image.open(io.BytesIO(image_bytes)).convert("RGB").save(buf, "JPEG", quality=85)
+    img = Image.open(io.BytesIO(image_bytes))
+    # Auto-rotate based on EXIF orientation tag so portrait photos aren't sideways
+    try:
+        from PIL import ImageOps
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+    img.convert("RGB").save(buf, "JPEG", quality=85)
     save_photo(buf.getvalue(), relative_path)
     return relative_path
 
