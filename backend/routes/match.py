@@ -79,6 +79,17 @@ def _run_search(search_text: str, db: Session) -> list:
         # Vectorstore still downloading/initializing at startup
         raise HTTPException(status_code=503, detail="语料库正在初始化，请等待约 30-60 秒后重试")
 
+    # PostgreSQL: verify poem import has completed (poems in ChromaDB but not yet in PG = still importing)
+    from backend.db import DATABASE_URL
+    if DATABASE_URL.startswith("postgresql"):
+        import sqlalchemy
+        pg_count = db.execute(sqlalchemy.text("SELECT COUNT(*) FROM poems")).scalar()
+        if pg_count < 10000:
+            raise HTTPException(
+                status_code=503,
+                detail=f"诗词库正在导入 PostgreSQL（已完成 {pg_count} / 390000），请等待 2-3 分钟后重试"
+            )
+
     hits = embedder.search_corpus(search_text, n_results=60)
     candidates = []
     seen_ids: set = set()
