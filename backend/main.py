@@ -328,7 +328,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/admin/import-poems")
+@app.get("/admin/import-poems")
 async def admin_import_poems():
     """Manually trigger poem import into PostgreSQL. Safe to call multiple times."""
     if not _is_postgres():
