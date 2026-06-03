@@ -96,51 +96,54 @@ def backup_db() -> None:
 
 
 def _import_poems_from_sqlite(sqlite_path: str) -> int:
-    """Bulk-insert corpus poems from a SQLite file into PostgreSQL. Returns row count."""
+    """Stream corpus poems from SQLite into PostgreSQL in small independent batches."""
     import sqlite3
     import sqlalchemy
     from backend.db import engine
     from backend.models import Poem
 
+    BATCH = 200
+    total = 0
+    batch: list = []
+
     with sqlite3.connect(sqlite_path) as src:
         src.row_factory = sqlite3.Row
-        rows = src.execute(
+        cursor = src.execute(
             "SELECT id, title, author, dynasty, ci_pai, content, source, is_memorized, created_at "
             "FROM poems WHERE source = 'corpus'"
-        ).fetchall()
+        )
+        for row in cursor:          # stream one row at a time — no fetchall OOM
+            batch.append({
+                "id": row["id"],
+                "title": row["title"],
+                "author": row["author"],
+                "dynasty": row["dynasty"],
+                "ci_pai": row["ci_pai"],
+                "content": row["content"],
+                "source": row["source"] or "corpus",
+                "is_memorized": bool(row["is_memorized"]),
+                "user_id": None,
+                "created_at": row["created_at"],
+            })
+            if len(batch) == BATCH:
+                with engine.begin() as conn:   # separate transaction per batch
+                    conn.execute(Poem.__table__.insert(), batch)
+                total += len(batch)
+                batch = []
+                if total % 20000 == 0:
+                    logger.info("Poem import progress: %d", total)
 
-    if not rows:
-        logger.warning("SQLite backup has no corpus poems")
-        return 0
-
-    batch_size = 500
-    total = 0
-    with engine.begin() as conn:
-        for i in range(0, len(rows), batch_size):
-            batch = [
-                {
-                    "id": r["id"],
-                    "title": r["title"],
-                    "author": r["author"],
-                    "dynasty": r["dynasty"],
-                    "ci_pai": r["ci_pai"],
-                    "content": r["content"],
-                    "source": r["source"] or "corpus",
-                    "is_memorized": bool(r["is_memorized"]),
-                    "user_id": None,
-                    "created_at": r["created_at"],
-                }
-                for r in rows[i : i + batch_size]
-            ]
+    if batch:
+        with engine.begin() as conn:
             conn.execute(Poem.__table__.insert(), batch)
-            total += len(batch)
-            if total % 50000 == 0:
-                logger.info("Imported %d / %d poems…", total, len(rows))
+        total += len(batch)
 
-        # Reset PostgreSQL sequence to max imported ID
-        conn.execute(sqlalchemy.text(
-            "SELECT setval(pg_get_serial_sequence('poems', 'id'), MAX(id)) FROM poems"
-        ))
+    # Reset sequence so future inserts don't collide with imported IDs
+    if total > 0:
+        with engine.begin() as conn:
+            conn.execute(sqlalchemy.text(
+                "SELECT setval(pg_get_serial_sequence('poems', 'id'), MAX(id)) FROM poems"
+            ))
 
     return total
 
@@ -323,6 +326,15 @@ def serve_photo(path: str):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/admin/import-poems")
+async def admin_import_poems():
+    """Manually trigger poem import into PostgreSQL. Safe to call multiple times."""
+    if not _is_postgres():
+        return {"status": "skipped", "reason": "not using PostgreSQL"}
+    asyncio.create_task(_import_poems_to_postgres_if_needed())
+    return {"status": "started", "message": "导入已在后台启动，约 3-5 分钟完成，完成后 /health/full 的 pg_poem_count 会更新"}
 
 
 @app.get("/health/full")
