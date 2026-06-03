@@ -14,26 +14,21 @@
 
 ## 界面预览
 
-<table>
-  <tr>
-    <td align="center"><b>主页</b></td>
-    <td align="center"><b>上传配诗</b></td>
-    <td align="center"><b>配诗结果</b></td>
-    <td align="center"><b>日历</b></td>
-    <td align="center"><b>记录详情</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/home.jpg" width="180"/></td>
-    <td><img src="docs/screenshots/add.jpg" width="180"/></td>
-    <td><img src="docs/screenshots/matching.jpg" width="180"/></td>
-    <td><img src="docs/screenshots/calendar.jpg" width="180"/></td>
-    <td><img src="docs/screenshots/detail.jpg" width="180"/></td>
-  </tr>
-</table>
-
 <div align="center">
-  <img src="docs/screenshots/list.jpg" width="440"/>
-  <p><i>诗词日记列表 — 每张照片都有属于它的那句诗</i></p>
+
+<img src="docs/screenshots/home.jpg" width="260"/>
+
+<br/><br/>
+
+<img src="docs/screenshots/add.jpg" width="195"/> &nbsp;
+<img src="docs/screenshots/matching.jpg" width="195"/> &nbsp;
+<img src="docs/screenshots/calendar.jpg" width="195"/>
+
+<br/><br/>
+
+<img src="docs/screenshots/detail.jpg" width="280"/> &nbsp;
+<img src="docs/screenshots/list.jpg" width="280"/>
+
 </div>
 
 ---
