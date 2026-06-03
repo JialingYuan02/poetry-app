@@ -4,32 +4,38 @@
 
 ### 为你眼前的景，配三首恰好的诗
 
-拍一张照片，AI 分析画面意境，从 38 万首古诗词中为你挑出最贴合的那几句。
-
 **[→ 立即体验 shiju.app](https://shiju.app)**
 
 </div>
 
 ---
 
+## 为什么需要
+
+落日余晖的傍晚，是否想吟咏两句却张口忘词；
+轻寒轻暖的年末，是否想回忆过往却雾里看花？
+
+拾句，意为捡起生活中的点滴，缀之成串；
+见山见水时，替你拾起那句未曾说出口的诗。
+
+---
+
 ## 界面预览
 
-<div align="center">
+<p align="center">
+  <img src="docs/screenshots/home.jpg" width="38%"/>
+</p>
 
-<img src="docs/screenshots/home.jpg" width="260"/>
+<p align="center">
+  <img src="docs/screenshots/add.jpg" width="28%"/>
+  <img src="docs/screenshots/matching.jpg" width="28%"/>
+  <img src="docs/screenshots/calendar.jpg" width="28%"/>
+</p>
 
-<br/><br/>
-
-<img src="docs/screenshots/add.jpg" width="195"/> &nbsp;
-<img src="docs/screenshots/matching.jpg" width="195"/> &nbsp;
-<img src="docs/screenshots/calendar.jpg" width="195"/>
-
-<br/><br/>
-
-<img src="docs/screenshots/detail.jpg" width="280"/> &nbsp;
-<img src="docs/screenshots/list.jpg" width="280"/>
-
-</div>
+<p align="center">
+  <img src="docs/screenshots/detail.jpg" width="37%"/>
+  <img src="docs/screenshots/list.jpg" width="37%"/>
+</p>
 
 ---
 
@@ -52,30 +58,6 @@
 
 ---
 
-## 配诗流程
-
-```
-上传照片
-    ↓
-Gemini Flash 提取意境关键词
-（意境 / 核心意象 / 季节时间 / 诗风倾向）
-    ↓
-合并 AI 描述 + 用户补充文字（用户文字权重 ×2）
-    ↓
-BGE 向量化 → ChromaDB 语义搜索 Top 60
-    ↓
-最终分数 = 相似度 × 名气系数 × 长度系数
-过滤低质量 / 冷门无名氏
-    ↓
-返回 2–3 首
-```
-
-**名气系数参考**：李白 / 杜甫 1.30 · 苏轼 1.25 · 辛弃疾 1.22 · 王维 / 白居易 1.20 …
-
-**长度系数**：≤ 40 字（绝句 / 律诗）× 1.06，短诗流传度通常更高
-
----
-
 ## 技术栈
 
 | 层级 | 技术 |
@@ -83,7 +65,7 @@ BGE 向量化 → ChromaDB 语义搜索 Top 60
 | 后端 | Python · FastAPI |
 | 数据库 | PostgreSQL（Railway 托管，38 万首诗永久存储） |
 | 向量检索 | ChromaDB · BAAI/bge-small-zh-v1.5 |
-| 视觉理解 | Gemini 2.0 Flash |
+| 视觉理解 | Gemini 2.5 Flash |
 | 前端 | HTML · Tailwind CSS · 原生 JS，无构建步骤 |
 | 图片存储 | Cloudflare R2 |
 | 部署 | Railway |
