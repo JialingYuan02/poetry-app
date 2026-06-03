@@ -332,4 +332,16 @@ def health_full():
         info = EmbedderService().health_check()
     except Exception:
         info = {"vectorstore_ready": False, "corpus_count": 0, "personal_count": 0}
-    return {"status": "ok", **info}
+
+    # PostgreSQL poem count (separate from vectorstore)
+    pg_poem_count = None
+    if _is_postgres():
+        try:
+            import sqlalchemy
+            from backend.db import engine
+            with engine.connect() as conn:
+                pg_poem_count = conn.execute(sqlalchemy.text("SELECT COUNT(*) FROM poems")).scalar()
+        except Exception:
+            pass
+
+    return {"status": "ok", "pg_poem_count": pg_poem_count, **info}
